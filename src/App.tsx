@@ -298,6 +298,23 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
   return null;
 };
 
+/** First simulation month that fails path verification (aligned with protocol watch effect). */
+function findFirstSimulationIssue(simulationData: any[]) {
+  return simulationData.find((d) => {
+    if (d.month < 1) return false;
+    if (d.isCrisis === true) return true;
+    if (typeof d.Financial === 'number' && d.Financial < 0) return true;
+    if (Array.isArray(d.violations) && d.violations.length > 0) return true;
+    if (Array.isArray(d.events)) {
+      return d.events.some(
+        (ev: any) =>
+          Number(ev.monthlyIncome || 0) - Number(ev.ongoingCost || 0) < 0
+      );
+    }
+    return false;
+  });
+}
+
 // --- Main App ---
 
 export default function App() {
@@ -308,6 +325,12 @@ export default function App() {
   const [pathReport, setPathReport] = useState<{ target: string, reason: string } | null>(null);
   const [protocolChaosReport, setProtocolChaosReport] = useState<string | null>(null);
   const [protocolPathReport, setProtocolPathReport] = useState<{ target: string; reason: string } | null>(null);
+  const [protocolFinalScore, setProtocolFinalScore] = useState<{
+    success: boolean;
+    headline: string;
+    detail: string;
+    failureMonth?: number;
+  } | null>(null);
   const [canvasSyncing, setCanvasSyncing] = useState(false);
   const canvasSyncTimerRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -361,7 +384,7 @@ export default function App() {
     maxBurn: 0, 
     minMonthlyBuffer: 0,
     minSleep: 0, 
-    maxLabor: 0,
+    maxLabor: 10,
     prayerStrict: false,
     minStudy: 0,
     minFamily: 0,
@@ -370,6 +393,7 @@ export default function App() {
   const [activePath, setActivePath] = useLocalStorage<'conservative' | 'aggressive'>('sovereign-active-path', 'conservative');
 
   const [isGhostMode, setIsGhostMode] = useState(false);
+  const [resetMemoryModalOpen, setResetMemoryModalOpen] = useState(false);
 
   const [conservativePathName, setConservativePathName] = useLocalStorage('sovereign-conservative-name', 'Conservative');
   const [aggressivePathName, setAggressivePathName] = useLocalStorage('sovereign-aggressive-name', 'Aggressive');
@@ -436,6 +460,7 @@ export default function App() {
     monthlyIncome: number;
     monthlyYieldImpact?: number;
     timeReclaimed: number;
+    weeklyHours?: number;
     relationalImpact: number;
     spiritualImpact: number;
     dependencies: (string | { id: string, sourceHandle?: string, targetHandle?: string })[]; // Added for CPM
@@ -470,6 +495,7 @@ export default function App() {
       ongoingCost: 0,
       monthlyIncome: 0,
       timeReclaimed: 0,
+      weeklyHours: 0,
       relationalImpact: 0,
       spiritualImpact: 0,
       dependencies: [],
@@ -591,6 +617,57 @@ export default function App() {
     addTerminalLog("STRATEGY RESET: NEW GENESIS INITIALIZED.");
   };
 
+  const handleConfirmWipeSystemMemory = useCallback(() => {
+    setResetMemoryModalOpen(false);
+    recordHistory(getCurrentCanvasState());
+    setTimelineEvents([
+      {
+        id: 'genesis-1',
+        type: 'genesis',
+        name: 'Genesis Alpha',
+        month: 0,
+        initialCash: 150000,
+        initialDebt: 7500,
+        baseMonthlyIncome: 8500,
+        isActiveGenesis: true,
+        immediateCost: 0,
+        immediateIncome: 0,
+        ongoingCost: 0,
+        monthlyIncome: 0,
+        timeReclaimed: 0,
+        weeklyHours: 0,
+        relationalImpact: 0,
+        spiritualImpact: 0,
+        dependencies: [],
+        status: 'COMPLETED',
+        baselineLedger: [
+          { id: '1', label: 'Primary Income', type: 'Income', value: 8500, relationalImpact: 0, spiritualImpact: 0 },
+          { id: '2', label: 'Base Living Expenses', type: 'Expense', value: 3500, relationalImpact: 0, spiritualImpact: 0 },
+          { id: '3', label: 'Sleep', type: 'Time Use', value: 7, relationalImpact: 0, spiritualImpact: 0 },
+          { id: '4', label: 'Work Hours', type: 'Time Use', value: 8, relationalImpact: 0, spiritualImpact: 0 },
+        ],
+        initialSystemHealth: 80,
+        initialRelationalHarmony: 70,
+        initialSpiritualAlignment: 60,
+      },
+    ]);
+    setSystemConstraints({
+      minCash: 0,
+      maxBurn: 0,
+      minMonthlyBuffer: 0,
+      minSleep: 0,
+      maxLabor: 10,
+      prayerStrict: false,
+      minStudy: 0,
+      minFamily: 0,
+      coreContacts: 0,
+    });
+    setObjectiveDependencies([]);
+    setSelectedNodeId('genesis-1');
+    bumpCanvasSync();
+    addTerminalLog('SYSTEM MEMORY WIPED: GENESIS ONLY; CONSTRAINTS RESET.');
+  }, [recordHistory, getCurrentCanvasState, bumpCanvasSync]);
+
   const handleTidyGrid = () => {
     recordHistory(getCurrentCanvasState());
     setTimelineEvents(prev => prev.map(e => {
@@ -649,35 +726,6 @@ export default function App() {
         setIsSimulating(false);
       }
     }, 300);
-  };
-
-  const toggleProtocol = () => {
-    if (appState === 'PLANNING') {
-      setAppState('ACTIVE_PROTOCOL');
-      addTerminalLog("PROTOCOL ACTIVATED: ALL SYSTEMS LOCKED.");
-      addTerminalLog("MARCHING ORDERS GENERATED. FOCUS ON IMMEDIATE OBJECTIVE.");
-
-      // Set the first node(s) to ACTIVE if none are active or completed
-      setTimelineEvents(prev => {
-        const hasActiveOrCompleted = prev.some(e => e.status === 'ACTIVE' || e.status === 'COMPLETED');
-        if (!hasActiveOrCompleted && prev.length > 0) {
-          // Find nodes that depend on genesis
-          const genesisDependents = prev.filter(e => e.dependencies.some(d => (typeof d === 'string' ? d === 'genesis' : d.id === 'genesis')));
-          if (genesisDependents.length > 0) {
-            const firstNode = genesisDependents.sort((a, b) => a.month - b.month)[0];
-            return prev.map(e => e.id === firstNode.id ? { ...e, status: 'ACTIVE' } : { ...e, status: e.status || 'PENDING' });
-          } else {
-            // Fallback: just take the first month node
-            const firstNode = [...prev].sort((a, b) => a.month - b.month)[0];
-            return prev.map(e => e.id === firstNode.id ? { ...e, status: 'ACTIVE' } : { ...e, status: e.status || 'PENDING' });
-          }
-        }
-        return prev.map(e => ({ ...e, status: e.status || 'PENDING' }));
-      });
-    } else {
-      setAppState('PLANNING');
-      addTerminalLog("PROTOCOL ABORTED: RETURNING TO PLANNING PHASE.");
-    }
   };
 
   const handleLogCompleted = (eventId: string) => {
@@ -942,6 +990,7 @@ export default function App() {
       ongoingCost: 0,
       monthlyIncome: 0,
       timeReclaimed: 0,
+      weeklyHours: 0,
       relationalImpact: 0,
       spiritualImpact: 0,
       dependencies: [],
@@ -964,7 +1013,7 @@ export default function App() {
     setTimelineEvents(prev => [...prev, newEventObj]);
     addTerminalLog(`NODE INJECTED: ${type.toUpperCase()} INITIALIZED.`);
     setSelectedNodeId(id);
-  }, [recordHistory, getCurrentCanvasState, targetTimeline]);
+  }, [recordHistory, getCurrentCanvasState, targetTimeline, isGhostMode]);
 
   const handleDeleteEvent = useCallback((id: string) => {
     recordHistory(getCurrentCanvasState());
@@ -978,6 +1027,103 @@ export default function App() {
     setObjectiveDependencies(prev => prev.filter(d => d !== id));
     addTerminalLog(`NODE DELETED: ${id} REMOVED FROM SYSTEM.`);
   }, [recordHistory, getCurrentCanvasState, addTerminalLog]);
+
+  const applyStarterTemplate = useCallback(
+    (templateId: 'aviation' | 'travel') => {
+      recordHistory(getCurrentCanvasState());
+      const genesisId = timelineEvents.find((e) => e.type === 'genesis')?.id ?? 'genesis-1';
+      const scenario = isGhostMode ? ('ghost' as const) : ('primary' as const);
+      const mkId = () => Math.random().toString(36).slice(2, 11);
+      const base = () => ({
+        immediateIncome: 0,
+        ongoingCost: 0,
+        monthlyIncome: 0,
+        timeReclaimed: 0,
+        weeklyHours: 0,
+        relationalImpact: 0,
+        spiritualImpact: 0,
+        dependencies: [genesisId] as (string | { id: string; sourceHandle?: string; targetHandle?: string })[],
+        status: 'PENDING' as const,
+        scenario,
+      });
+
+      const aviationNodes = [
+        {
+          ...base(),
+          id: mkId(),
+          type: 'event' as const,
+          name: 'UDC Tuition (Fall 2026 est.)',
+          month: 9,
+          immediateCost: 14200,
+          ongoingCost: 1750,
+          weeklyHours: 18,
+        },
+        {
+          ...base(),
+          id: mkId(),
+          type: 'event' as const,
+          name: 'Study Hours',
+          month: 2,
+          immediateCost: 450,
+          ongoingCost: 90,
+          weeklyHours: 15,
+        },
+        {
+          ...base(),
+          id: mkId(),
+          type: 'event' as const,
+          name: 'Junior Tech Salary (VA/DC entry)',
+          month: 5,
+          immediateCost: 0,
+          ongoingCost: 0,
+          monthlyIncome: 4750,
+          weeklyHours: 40,
+        },
+      ];
+
+      const travelNodes = [
+        {
+          ...base(),
+          id: mkId(),
+          type: 'event' as const,
+          name: 'Business Licensing',
+          month: 1,
+          immediateCost: 3200,
+          ongoingCost: 0,
+          weeklyHours: 8,
+        },
+        {
+          ...base(),
+          id: mkId(),
+          type: 'event' as const,
+          name: 'Dar Al Safar Branding',
+          month: 2,
+          immediateCost: 6500,
+          ongoingCost: 150,
+          weeklyHours: 15,
+        },
+        {
+          ...base(),
+          id: mkId(),
+          type: 'event' as const,
+          name: 'GDS Subscription',
+          month: 2,
+          immediateCost: 500,
+          ongoingCost: 450,
+          weeklyHours: 6,
+        },
+      ];
+
+      const nodes = templateId === 'aviation' ? aviationNodes : travelNodes;
+      setTimelineEvents((prev) => [...prev, ...nodes]);
+      addTerminalLog(
+        templateId === 'aviation'
+          ? 'TEMPLATE INJECTED: AVIATION MAINTENANCE PATH'
+          : 'TEMPLATE INJECTED: TRAVEL AGENCY LAUNCH'
+      );
+    },
+    [recordHistory, getCurrentCanvasState, timelineEvents, isGhostMode]
+  );
 
   // Keyboard Shortcuts (Canvas view)
   React.useEffect(() => {
@@ -1465,6 +1611,19 @@ export default function App() {
   const liveMonthlyExpenses = totalMonthlyBurnRate + eventMonthlyCost;
   const liveMonthlySavings = (totalMonthlyIncome + eventMonthlyIncome) - liveMonthlyExpenses;
 
+  /** Weekly time from active-by-month nodes → daily average for Daily Log (distinct from systemConstraints.minSleep). */
+  const totalDailyHours = useMemo(() => {
+    const totalWeekly = timelineEvents
+      .filter(
+        (n) =>
+          (n.type === 'event' || n.type === 'objective') &&
+          n.status !== 'FAILED' &&
+          (n.month || 0) <= currentSimulationMonth
+      )
+      .reduce((acc, n) => acc + Number(n.weeklyHours || 0), 0);
+    return totalWeekly / 7;
+  }, [timelineEvents, currentSimulationMonth]);
+
   // Stress Test Modifiers
   const volatilityImpact = stressTests.marketVolatility ? -4.5 : 0;
   const inflationImpact = stressTests.inflationSpike ? 1.12 : 1;
@@ -1479,6 +1638,18 @@ export default function App() {
   const investmentMultiplier = 1 + (skillStudyTime * 0.06) + (readingLearningTime * 0.03);
   const effectiveYield = baseEffectiveYield * investmentMultiplier;
   const monthlyYield = (effectiveYield / 100) / 12;
+
+  /** 121 points: month 0..120; compounding + monthly savings (Terminal “visual destiny”). */
+  const nwTrajectoryTenYear = useMemo(() => {
+    const pts: number[] = [];
+    let nw = initialNetWorth;
+    pts.push(nw);
+    for (let m = 0; m < 120; m++) {
+      nw = nw * (1 + monthlyYield) + liveMonthlySavings;
+      pts.push(nw);
+    }
+    return pts;
+  }, [initialNetWorth, monthlyYield, liveMonthlySavings]);
 
   const isHalal = activePath === 'conservative' ? conservativeHalal : aggressiveHalal;
   
@@ -1518,6 +1689,54 @@ export default function App() {
     disruptionImpact, currentSimulationMonth, dailyTelemetry, relationalTripwire,
     effectiveMonthlyDegradation, isHalal, systemConstraints, yieldMultiplier
   ]);
+
+  const toggleProtocol = () => {
+    if (appState === 'PLANNING') {
+      setProtocolFinalScore(null);
+      setAppState('ACTIVE_PROTOCOL');
+      addTerminalLog("PROTOCOL ACTIVATED: ALL SYSTEMS LOCKED.");
+      addTerminalLog("MARCHING ORDERS GENERATED. FOCUS ON IMMEDIATE OBJECTIVE.");
+
+      setTimelineEvents(prev => {
+        const hasActiveOrCompleted = prev.some(e => e.status === 'ACTIVE' || e.status === 'COMPLETED');
+        if (!hasActiveOrCompleted && prev.length > 0) {
+          const genesisDependents = prev.filter(e => e.dependencies.some(d => (typeof d === 'string' ? d === 'genesis' : d.id === 'genesis')));
+          if (genesisDependents.length > 0) {
+            const firstNode = genesisDependents.sort((a, b) => a.month - b.month)[0];
+            return prev.map(e => e.id === firstNode.id ? { ...e, status: 'ACTIVE' } : { ...e, status: e.status || 'PENDING' });
+          } else {
+            const firstNode = [...prev].sort((a, b) => a.month - b.month)[0];
+            return prev.map(e => e.id === firstNode.id ? { ...e, status: 'ACTIVE' } : { ...e, status: e.status || 'PENDING' });
+          }
+        }
+        return prev.map(e => ({ ...e, status: e.status || 'PENDING' }));
+      });
+    } else {
+      const issue = findFirstSimulationIssue(simulationData);
+      if (issue) {
+        const violText =
+          Array.isArray(issue.violations) && issue.violations.length > 0
+            ? issue.violations.join('; ')
+            : issue.isCrisis === true || (typeof issue.Financial === 'number' && issue.Financial < 0)
+              ? 'Negative net position / liquidity stress'
+              : 'Negative recurring cashflow on scheduled events';
+        setProtocolFinalScore({
+          success: false,
+          headline: `Path Terminal: [ FAILURE - MONTH ${issue.month} ]`,
+          detail: `${violText}. Review the timeline and constraints before the next run.`,
+          failureMonth: issue.month,
+        });
+      } else {
+        setProtocolFinalScore({
+          success: true,
+          headline: 'Path Verified: [ SUCCESS ]',
+          detail: 'No liquidity breach, negative net worth month, or negative recurring event cashflow detected across the simulation horizon.',
+        });
+      }
+      setAppState('PLANNING');
+      addTerminalLog("PROTOCOL ABORTED: RETURNING TO PLANNING PHASE.");
+    }
+  };
 
   useEffect(() => {
     setIsRecalculating(true);
@@ -1706,19 +1925,7 @@ export default function App() {
       return;
     }
 
-    const issue = simulationData.find((d) => {
-      if (d.month < 1) return false;
-      if (d.isCrisis === true) return true;
-      if (typeof d.Financial === 'number' && d.Financial < 0) return true;
-      if (Array.isArray(d.violations) && d.violations.length > 0) return true;
-      if (Array.isArray(d.events)) {
-        return d.events.some(
-          (ev: any) =>
-            Number(ev.monthlyIncome || 0) - Number(ev.ongoingCost || 0) < 0
-        );
-      }
-      return false;
-    });
+    const issue = findFirstSimulationIssue(simulationData);
 
     if (issue) {
       const violText =
@@ -1833,6 +2040,103 @@ export default function App() {
         </div>
       ) : (
         <div className="relative h-screen w-screen overflow-hidden font-sans bg-neutral-950 text-white">
+      {protocolFinalScore && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="protocol-final-score-title"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-red-900/40 border-stone-200/15 bg-stone-950/92 p-8 shadow-2xl ring-1 ring-stone-100/10 backdrop-blur-2xl">
+            <h2
+              id="protocol-final-score-title"
+              className={cn(
+                'mb-3 font-headline text-lg font-black uppercase tracking-widest',
+                protocolFinalScore.success ? 'text-emerald-400' : 'text-red-400'
+              )}
+            >
+              {protocolFinalScore.headline}
+            </h2>
+            <p className="mb-8 font-headline text-sm leading-relaxed text-stone-300">{protocolFinalScore.detail}</p>
+            <div className="flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                onClick={async () => {
+                  const fmt = (v: number) =>
+                    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v);
+                  const lastRow = simulationData[simulationData.length - 1];
+                  const projectedNW = typeof lastRow?.Financial === 'number' ? lastRow.Financial : 0;
+                  const summary = [
+                    goalName ? `Goal: ${goalName}` : null,
+                    `Target capital: ${fmt(targetCapital)}`,
+                    `Projected NW (end sim): ${fmt(projectedNW)}`,
+                    `Monthly net (baseline ledger): ${fmt(netMonthlyYield)}`,
+                    protocolFinalScore.headline,
+                    protocolFinalScore.detail,
+                  ]
+                    .filter(Boolean)
+                    .join('\n');
+                  try {
+                    await navigator.clipboard.writeText(summary);
+                  } catch {
+                    console.warn('Clipboard unavailable');
+                  }
+                }}
+                className="rounded-full border border-stone-500/40 px-5 py-2 font-headline text-xs font-bold uppercase tracking-widest text-stone-100 hover:bg-stone-100/10"
+              >
+                [ Share ]
+              </button>
+              <button
+                type="button"
+                onClick={() => setProtocolFinalScore(null)}
+                className="rounded-full border border-primary/50 bg-primary/15 px-5 py-2 font-headline text-xs font-bold uppercase tracking-widest text-primary hover:bg-primary/25"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {resetMemoryModalOpen && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reset-memory-title"
+          onClick={() => setResetMemoryModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border-[0.5px] border-outline-variant/30 bg-neutral-950/88 p-8 shadow-2xl backdrop-blur-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2
+              id="reset-memory-title"
+              className="mb-3 font-headline text-lg font-black uppercase tracking-widest text-red-400"
+            >
+              WIPE SYSTEM MEMORY?
+            </h2>
+            <p className="mb-8 font-headline text-sm leading-relaxed text-stone-300">
+              This will delete all nodes and reset constraints.
+            </p>
+            <div className="flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setResetMemoryModalOpen(false)}
+                className="rounded-full border border-stone-500/40 px-5 py-2 font-headline text-xs font-bold uppercase tracking-widest text-stone-200 hover:bg-white/5"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmWipeSystemMemory}
+                className="rounded-full border border-red-600/50 bg-red-950/40 px-5 py-2 font-headline text-xs font-bold uppercase tracking-widest text-red-400 hover:bg-red-950/70"
+              >
+                Confirm wipe
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {!isModalView && (displayChaos || displayPath) && (
         <div className="fixed top-24 right-8 z-[60] flex flex-col gap-4 drop-shadow-2xl">
       {displayChaos && (
@@ -1877,7 +2181,9 @@ export default function App() {
           activeTab={activeTab} 
           setActiveTab={setActiveTab} 
           onExport={handleExport} 
-          onImport={handleImport} 
+          onImport={handleImport}
+          onLoadTemplate={applyStarterTemplate}
+          onOpenResetModal={() => setResetMemoryModalOpen(true)}
         />
       </div>
 
@@ -1892,16 +2198,19 @@ export default function App() {
               "backdrop-blur-md shadow-[0_20px_80px_rgba(0,0,0,0.12)] transition-all duration-300",
               glassPanelClass
             )}>
-              <div className="flex min-h-[44px] items-center gap-4 overflow-hidden text-[10px] tracking-[0.2em] uppercase">
-                <div className="flex items-center gap-2">
-                  <span className="text-white/50">Monthly Expenses</span>
+              <div className="flex min-h-[44px] items-center gap-4 overflow-visible text-[10px] tracking-[0.2em] uppercase">
+                <div className="group/mexp relative flex items-center gap-2">
+                  <span className="cursor-help border-b border-dotted border-white/25 text-white/50">Monthly Expenses</span>
                   <span className="font-mono font-bold text-red-600">
                     {formatCurrency(liveMonthlyExpenses)}
                   </span>
+                  <div className="pointer-events-none invisible absolute left-0 top-full z-[60] mt-1 w-max max-w-[240px] rounded-md border-[0.5px] border-outline-variant/30 bg-neutral-950/95 px-2.5 py-1.5 text-[8px] font-headline font-normal normal-case leading-snug tracking-normal text-stone-300 opacity-0 shadow-lg backdrop-blur-md transition-opacity group-hover/mexp:visible group-hover/mexp:opacity-100">
+                    Sum of all active Event and Objective costs.
+                  </div>
                 </div>
                 <div className="w-px h-3 bg-white/10" />
-                <div className="flex items-center gap-2">
-                  <span className="text-white/50">Monthly Savings</span>
+                <div className="group/msav relative flex items-center gap-2">
+                  <span className="cursor-help border-b border-dotted border-white/25 text-white/50">Monthly Savings</span>
                   <span
                     className={cn(
                       'font-mono font-bold',
@@ -1912,6 +2221,9 @@ export default function App() {
                   >
                     {formatCurrency(liveMonthlySavings)}
                   </span>
+                  <div className="pointer-events-none invisible absolute right-0 top-full z-[60] mt-1 w-max max-w-[240px] rounded-md border-[0.5px] border-outline-variant/30 bg-neutral-950/95 px-2.5 py-1.5 text-[8px] font-headline font-normal normal-case leading-snug tracking-normal text-stone-300 opacity-0 shadow-lg backdrop-blur-md transition-opacity group-hover/msav:visible group-hover/msav:opacity-100">
+                    Calculated Yield - Total Burn Rate.
+                  </div>
                 </div>
               </div>
               <div className="pointer-events-none invisible absolute left-1/2 top-full z-50 mt-2 flex min-w-max max-w-[min(92vw,720px)] -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-2xl border-[0.5px] border-white/5 bg-neutral-900/95 px-3 py-2 opacity-0 shadow-2xl backdrop-blur-md transition-all duration-200 group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100">
@@ -1992,7 +2304,10 @@ export default function App() {
               nodes={timelineEvents}
               currentSimMonth={currentSimulationMonth}
               systemConstraints={systemConstraints}
+              requiredSleepHours={sleepTime}
+              totalDailyHours={totalDailyHours}
               totalFixedCosts={totalMonthlyBurnRate}
+              liveMonthlyExpenses={liveMonthlyExpenses}
               variableCosts={eventMonthlyCost}
               projectedYield={totalMonthlyIncome + eventMonthlyIncome}
               savingsBelowBuffer={savingsBelowBuffer}
@@ -2084,6 +2399,62 @@ export default function App() {
                   />
                 </motion.div>
               </AnimatePresence>
+            </section>
+
+            <section className="border border-outline-variant/10 bg-surface p-5">
+              <h3 className="mb-4 text-[10px] font-headline font-bold uppercase tracking-widest text-on-surface-variant">
+                10-Yr Net Worth (trajectory)
+              </h3>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+                <div className="min-w-0 flex-1">
+                  {(() => {
+                    const pts = nwTrajectoryTenYear;
+                    const w = 640;
+                    const h = 96;
+                    const pad = 8;
+                    const minV = Math.min(...pts);
+                    const maxV = Math.max(...pts, minV + 1e-6);
+                    const rng = maxV - minV;
+                    const scaleY = (v: number) => h - pad - ((v - minV) / rng) * (h - 2 * pad);
+                    const last = Math.max(0, pts.length - 1);
+                    const scaleX = (i: number) =>
+                      last <= 0 ? pad : pad + (i / last) * (w - 2 * pad);
+                    const lineD = pts
+                      .map((v, i) => `${i === 0 ? 'M' : 'L'} ${scaleX(i).toFixed(2)} ${scaleY(v).toFixed(2)}`)
+                      .join(' ');
+                    const areaD = `M ${scaleX(0).toFixed(2)} ${(h - pad).toFixed(2)} ${pts
+                      .map((v, i) => `L ${scaleX(i).toFixed(2)} ${scaleY(v).toFixed(2)}`)
+                      .join(' ')} L ${scaleX(last).toFixed(2)} ${(h - pad).toFixed(2)} Z`;
+                    return (
+                      <svg
+                        width="100%"
+                        height={h}
+                        viewBox={`0 0 ${w} ${h}`}
+                        className="text-primary"
+                        preserveAspectRatio="none"
+                        aria-hidden
+                      >
+                        <path d={areaD} fill="currentColor" className="opacity-[0.12]" />
+                        <path
+                          d={lineD}
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          vectorEffect="non-scaling-stroke"
+                        />
+                      </svg>
+                    );
+                  })()}
+                </div>
+                <div className="shrink-0 border-t border-outline-variant/10 pt-3 text-right sm:border-t-0 sm:border-l sm:pt-0 sm:pl-5 sm:text-left">
+                  <p className="text-[9px] font-headline uppercase tracking-[0.2em] text-on-surface-variant">
+                    Projected 10-Year NW
+                  </p>
+                  <p className="mt-1 font-headline text-xl font-bold text-emerald-500">
+                    {formatCurrency(nwTrajectoryTenYear[nwTrajectoryTenYear.length - 1] ?? 0)}
+                  </p>
+                </div>
+              </div>
             </section>
 
             {/* Success Probability Gauge */}
@@ -3407,7 +3778,6 @@ export default function App() {
       {/* Bottom Ticker */}
         {!isModalView && (
         <footer className={cn("absolute bottom-4 left-1/2 -translate-x-1/2 w-[min(94vw,1100px)] h-9 backdrop-blur-md border-[0.5px] rounded-2xl flex items-center overflow-hidden z-[100] shadow-[0_20px_80px_rgba(0,0,0,0.08)]", glassPanelClass)}>
-          <div className="flex items-center gap-12 px-6 whitespace-nowrap animate-marquee">
             {(() => {
               const breachCount = simAtCurrentMonth?.violations?.length ?? 0;
               const systemStatusValue = criticalAlert
@@ -3423,6 +3793,13 @@ export default function App() {
                   : liveMonthlySavings < 0
                     ? 'text-secondary'
                     : 'text-primary';
+              const objectiveList = timelineEvents.filter((e) => e.type === 'objective');
+              const pathAlignmentPct =
+                objectiveList.length === 0
+                  ? 100
+                  : (objectiveList.filter((e) => e.status === 'COMPLETED').length /
+                      objectiveList.length) *
+                    100;
               const rows: { label: string; value: string; color: string }[] = [
                 ...(canvasSyncing
                   ? [
@@ -3442,7 +3819,7 @@ export default function App() {
                 { label: 'SYSTEM_STATUS', value: systemStatusValue, color: systemStatusColor },
                 {
                   label: 'PATH_ALIGNMENT',
-                  value: `${(currentData.Emotional * 0.942).toFixed(1)}%`,
+                  value: `${pathAlignmentPct.toFixed(1)}%`,
                   color: 'text-primary',
                 },
                 {
@@ -3456,28 +3833,28 @@ export default function App() {
                   color: savingsTickerColor,
                 },
               ];
+              const Track = ({ dup }: { dup?: boolean }) => (
+                <div
+                  className="flex shrink-0 items-center gap-12 px-6 whitespace-nowrap"
+                  aria-hidden={dup ? true : undefined}
+                >
+                  {rows.map((item) => (
+                    <div key={`${dup ? 'd' : 'a'}-${item.label}`} className="flex items-center gap-3">
+                      <span className="text-[8px] font-headline uppercase text-on-surface-variant tracking-widest">
+                        {item.label}:
+                      </span>
+                      <span className={cn('text-[9px] font-headline font-bold', item.color)}>{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+              );
               return (
-                <>
-                  {rows.map((item, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <span className="text-[8px] font-headline uppercase text-on-surface-variant tracking-widest">
-                        {item.label}:
-                      </span>
-                      <span className={cn('text-[9px] font-headline font-bold', item.color)}>{item.value}</span>
-                    </div>
-                  ))}
-                  {rows.map((item, i) => (
-                    <div key={`dup-${i}`} className="flex items-center gap-3">
-                      <span className="text-[8px] font-headline uppercase text-on-surface-variant tracking-widest">
-                        {item.label}:
-                      </span>
-                      <span className={cn('text-[9px] font-headline font-bold', item.color)}>{item.value}</span>
-                    </div>
-                  ))}
-                </>
+                <div className="flex w-max animate-marquee">
+                  <Track />
+                  <Track dup />
+                </div>
               );
             })()}
-          </div>
         </footer>
         )}
         <div className="fixed bottom-6 left-6 z-50 group">
@@ -3487,7 +3864,7 @@ export default function App() {
           >
             ?
           </button>
-          <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute bottom-10 left-0 w-80 max-w-[calc(100vw-2rem)] bg-neutral-950/95 backdrop-blur-xl border border-white/15 rounded-2xl p-4 text-stone-100 shadow-2xl ring-1 ring-white/5">
+          <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute bottom-10 left-0 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border-[0.5px] border-outline-variant/30 bg-neutral-950/90 p-4 text-stone-100 shadow-2xl backdrop-blur-xl">
             <h4 className="text-[10px] tracking-[0.18em] uppercase text-stone-200 mb-3">Legend</h4>
             <div className="space-y-3 text-[11px] leading-snug">
               <div>
@@ -3516,6 +3893,7 @@ export default function App() {
                   <span><span className="text-emerald-500/90">[Del]</span> Delete node</span>
                   <span><span className="text-emerald-500/90">[⌘/Ctrl+S]</span> Save / export JSON</span>
                   <span><span className="text-emerald-500/90">[Space]</span> Center view</span>
+                  <span><span className="text-emerald-500/90">[T]</span> Load templates (sidebar)</span>
                 </div>
               </div>
             </div>

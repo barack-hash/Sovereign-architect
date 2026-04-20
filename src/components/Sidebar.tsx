@@ -8,8 +8,8 @@ import {
   Settings, 
   HelpCircle, 
   User,
-  ChevronLeft,
-  ChevronRight
+  Library,
+  Trash2,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -18,13 +18,17 @@ interface SidebarProps {
   setActiveTab: (tab: string) => void;
   onExport: () => void;
   onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onLoadTemplate?: (id: 'aviation' | 'travel') => void;
+  onOpenResetModal?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
   activeTab, 
   setActiveTab, 
   onExport, 
-  onImport
+  onImport,
+  onLoadTemplate,
+  onOpenResetModal,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(true);
 
@@ -101,6 +105,39 @@ export const Sidebar: React.FC<SidebarProps> = ({
         isCollapsed ? "px-2" : "px-8"
       )}>
         <div className="flex flex-col gap-2 mb-4 mx-2">
+          {onLoadTemplate && (
+            <div className="flex flex-col gap-1.5">
+              {!isCollapsed && (
+                <p className="text-[8px] font-headline uppercase tracking-[0.2em] text-on-surface-variant/70 px-1">
+                  [ Load template ]
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={() => onLoadTemplate('aviation')}
+                className={cn(
+                  'flex items-center text-[9px] font-headline uppercase tracking-[0.15em] hover:bg-white/5 transition-all text-on-surface-variant hover:text-emerald-400/95 rounded-xl border border-transparent hover:border-emerald-500/20',
+                  isCollapsed ? 'justify-center p-3' : 'px-4 py-2.5 w-full'
+                )}
+                title={isCollapsed ? 'Aviation Maintenance Path' : undefined}
+              >
+                <Library size={14} className={cn(!isCollapsed && 'mr-2 shrink-0')} />
+                {!isCollapsed && <span className="truncate text-left">Aviation Path</span>}
+              </button>
+              <button
+                type="button"
+                onClick={() => onLoadTemplate('travel')}
+                className={cn(
+                  'flex items-center text-[9px] font-headline uppercase tracking-[0.15em] hover:bg-white/5 transition-all text-on-surface-variant hover:text-emerald-400/95 rounded-xl border border-transparent hover:border-emerald-500/20',
+                  isCollapsed ? 'justify-center p-3' : 'px-4 py-2.5 w-full'
+                )}
+                title={isCollapsed ? 'Travel Agency Launch' : undefined}
+              >
+                <Library size={14} className={cn(!isCollapsed && 'mr-2 shrink-0')} />
+                {!isCollapsed && <span className="truncate text-left">Travel Launch</span>}
+              </button>
+            </div>
+          )}
           <button 
             onClick={onExport}
             className={cn(
@@ -164,6 +201,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
         </div>
+
+        {onOpenResetModal && (
+          <button
+            type="button"
+            onClick={onOpenResetModal}
+            className={cn(
+              'mt-3 flex items-center text-[9px] font-headline uppercase tracking-[0.2em] text-red-500/90 hover:bg-red-950/30 transition-all rounded-xl border border-transparent hover:border-red-900/40 mx-2',
+              isCollapsed ? 'justify-center p-3 w-[calc(100%-16px)]' : 'px-4 py-3 w-[calc(100%-16px)]'
+            )}
+            title={isCollapsed ? 'Reset system' : undefined}
+          >
+            <Trash2 size={16} className={cn(!isCollapsed && 'mr-3 shrink-0')} />
+            {!isCollapsed && 'Reset'}
+          </button>
+        )}
       </div>
     </aside>
   );

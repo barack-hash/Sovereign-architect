@@ -48,6 +48,35 @@ const normalizeToDaily = (value: number, freq: string) => {
   }
 };
 
+const formatUsdWhole = (n: number) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+
+/** Annualized return heuristic: (12 × monthly net) / one-time cost × 100 when immediateCost > 0. */
+const buildEventMathTooltip = (event: any): string => {
+  const monthlyNet = Number(event.monthlyIncome || 0) - Number(event.ongoingCost || 0);
+  const immCost = Number(event.immediateCost || 0);
+  let roi = '—';
+  if (immCost > 0) {
+    const approx = ((monthlyNet * 12) / immCost) * 100;
+    roi = Number.isFinite(approx) ? `${approx >= 0 ? '+' : ''}${Math.round(approx)}%` : 'N/A';
+  }
+  return `Impact: ${formatUsdWhole(monthlyNet)}/mo | ROI: ${roi}`;
+};
+
+const buildObjectiveMathTooltip = (event: any, simNW: number, progress: number, deficit?: number): string => {
+  const target = Number(event.targetCapital || 0);
+  const gap = target - (simNW || 0);
+  const impact =
+    gap > 0
+      ? `Shortfall ${formatUsdWhole(gap)}`
+      : gap < 0
+        ? `Ahead ${formatUsdWhole(-gap)}`
+        : 'On target';
+  const roi =
+    deficit != null && deficit > 0 ? `Gap: ${formatUsdWhole(deficit)}` : `${Math.round(progress)}% to target`;
+  return `Impact: ${impact} | ${roi}`;
+};
+
 // --- Custom Edge Component ---
 
 const SlackEdge = ({
@@ -74,9 +103,31 @@ const SlackEdge = ({
   const slack = data?.slack as number || 0;
   const isCritical = slack === 0;
   const isLiquidityCrisis = data?.isLiquidityCrisis as boolean || false;
+  const pathUnhealthy = Boolean(data?.pathUnhealthy);
   const onDeleteEdge = data?.onDeleteEdge as (id: string) => void;
 
   const [isHovered, setIsHovered] = React.useState(false);
+
+  const strokeResolved =
+    style.stroke !== undefined && style.stroke !== null
+      ? style.stroke
+      : isLiquidityCrisis || pathUnhealthy
+        ? '#f87171'
+        : isCritical
+          ? '#f27d26'
+          : '#4be277';
+  const strokeWidthResolved =
+    style.strokeWidth !== undefined && style.strokeWidth !== null
+      ? style.strokeWidth
+      : isLiquidityCrisis || pathUnhealthy || isCritical
+        ? 3
+        : 2;
+  const opacityResolved =
+    style.opacity !== undefined && style.opacity !== null
+      ? style.opacity
+      : pathUnhealthy
+        ? 0.55
+        : 0.8;
 
   return (
     <>
@@ -85,9 +136,9 @@ const SlackEdge = ({
         markerEnd={markerEnd} 
         style={{ 
           ...style, 
-          stroke: style.stroke || (isLiquidityCrisis ? '#ff4444' : (isCritical ? '#f27d26' : '#4be277')),
-          strokeWidth: style.strokeWidth || (isLiquidityCrisis || isCritical ? 3 : 2),
-          opacity: style.opacity || 0.8
+          stroke: strokeResolved,
+          strokeWidth: strokeWidthResolved,
+          opacity: opacityResolved,
         }} 
       />
       <EdgeLabelRenderer>
@@ -104,9 +155,9 @@ const SlackEdge = ({
           <div className="flex items-center gap-1 pointer-events-auto">
             <div className={cn(
               "px-2 py-0.5 rounded-sm border text-[8px] font-mono font-bold uppercase tracking-tighter shadow-xl transition-all",
-              isLiquidityCrisis ? "bg-secondary text-surface-lowest border-secondary animate-pulse" : (isCritical ? "bg-secondary text-surface-lowest border-secondary" : "bg-surface-container text-primary border-primary/30")
+              isLiquidityCrisis || pathUnhealthy ? "bg-secondary text-surface-lowest border-secondary animate-pulse" : (isCritical ? "bg-secondary text-surface-lowest border-secondary" : "bg-surface-container text-primary border-primary/30")
             )}>
-              {isLiquidityCrisis ? "DENIED" : `[ SLACK: ${slack} MO ]`}
+              {isLiquidityCrisis || pathUnhealthy ? "DENIED" : `[ SLACK: ${slack} MO ]`}
             </div>
             <AnimatePresence>
               {isHovered && (
@@ -231,7 +282,8 @@ type EventNodeData = {
   errorType?: string;
   scenario?: 'primary' | 'ghost';
   ghostScenarioActive?: boolean;
-  onDelete: () => void 
+  onDelete: () => void;
+  mathTooltip?: string;
 };
 type EventNode = Node<EventNodeData, 'event'>;
 
@@ -290,18 +342,18 @@ const EventNode = ({ data, selected }: NodeProps<EventNode>) => (
     </div>
     <div className="space-y-2">
       <div className="flex justify-between">
-        <span className="text-[9px] text-secondary uppercase font-bold">Cost</span>
+        <span className="text-[9px] text-secondary uppercase font-bold">Upfront cost</span>
         <span className="text-xs font-mono font-bold text-secondary">-${((data?.immediateCost || 0) / 1000).toFixed(1)}k</span>
       </div>
       <div className="flex justify-between">
-        <span className="text-[9px] text-primary uppercase font-bold">Income</span>
+        <span className="text-[9px] text-primary uppercase font-bold">Upfront income</span>
         <span className="text-xs font-mono font-bold text-primary">+${((data?.immediateIncome || 0) / 1000).toFixed(1)}k</span>
       </div>
       {((data?.monthlyIncome || 0) - (data?.ongoingCost || 0)) !== 0 && (
         <div className="flex justify-between text-[10px] font-mono uppercase mt-1">
-          <span className="text-white/50">YIELD:</span>
+          <span className="text-white/50">Monthly net</span>
           <span className={((data?.monthlyIncome || 0) - (data?.ongoingCost || 0)) > 0 ? "text-green-400" : "text-red-400"}>
-            {((data?.monthlyIncome || 0) - (data?.ongoingCost || 0)) > 0 ? '+' : ''}${((data?.monthlyIncome || 0) - (data?.ongoingCost || 0))}/MO
+            {((data?.monthlyIncome || 0) - (data?.ongoingCost || 0)) > 0 ? '+' : ''}${((data?.monthlyIncome || 0) - (data?.ongoingCost || 0))}/mo
           </span>
         </div>
       )}
@@ -336,6 +388,13 @@ const EventNode = ({ data, selected }: NodeProps<EventNode>) => (
         [ DONE ]
       </div>
     )}
+    {data?.mathTooltip && (
+      <div className="pointer-events-none absolute left-1/2 bottom-full z-50 mb-2 w-max max-w-[240px] -translate-x-1/2 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="rounded-lg border-[0.5px] border-white/20 bg-neutral-900/90 px-2 py-1.5 text-[10px] font-mono text-stone-200 shadow-xl backdrop-blur-md">
+          {data.mathTooltip}
+        </div>
+      </div>
+    )}
     <OmniHandles color={NODE_COLORS.event.border} />
   </div>
 );
@@ -354,12 +413,13 @@ type ObjectiveNodeData = {
   deficit?: number;
   scenario?: 'primary' | 'ghost';
   ghostScenarioActive?: boolean;
+  mathTooltip?: string;
 };
 type ObjectiveNode = Node<ObjectiveNodeData, 'objective'>;
 
 const ObjectiveNode = ({ data, selected }: NodeProps<ObjectiveNode>) => (
   <div className={cn(
-    "min-w-[280px] backdrop-blur-xl border rounded-2xl p-4 shadow-2xl relative transition-all",
+    "group min-w-[280px] backdrop-blur-xl border rounded-2xl p-4 shadow-2xl relative transition-all",
     "bg-neutral-950/70 border-white/10",
     data?.isBottleneck && data?.errorType === 'UNLINKED' && "ring-2 ring-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)] animate-pulse",
     data?.isBottleneck && data?.errorType === 'BLOCKED_BY_PARENT' && "ring-2 ring-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.5)] animate-pulse",
@@ -445,6 +505,13 @@ const ObjectiveNode = ({ data, selected }: NodeProps<ObjectiveNode>) => (
         </div>
       </div>
     </div>
+    {data?.mathTooltip && (
+      <div className="pointer-events-none absolute left-1/2 bottom-full z-50 mb-2 w-max max-w-[260px] -translate-x-1/2 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="rounded-lg border-[0.5px] border-white/20 bg-neutral-900/90 px-2 py-1.5 text-[10px] font-mono text-stone-200 shadow-xl backdrop-blur-md">
+          {data.mathTooltip}
+        </div>
+      </div>
+    )}
     <OmniHandles color={NODE_COLORS.objective.border} />
   </div>
 );
@@ -820,19 +887,28 @@ function CanvasInternal({
           spiritualImpact: event.spiritualImpact,
           status: isCritical ? 'critical' : 'nominal',
           isBottleneck,
-          errorType
+          errorType,
+          mathTooltip: buildEventMathTooltip(event),
         };
       } else if (event.type === 'objective') {
+        const objTargetMonth = event.targetTimeline || 1;
+        const objSimRow =
+          activeSimData.find((d: any) => d.month === objTargetMonth) ||
+          activeSimData[activeSimData.length - 1] ||
+          {};
+        const simNW = (objSimRow as any).Financial || 0;
+        const objProgress = objectiveProgress[event.id] || 0;
         nodeData = {
           ...nodeData,
           target: event.targetCapital,
           status: nodeStatus === 'LOCKED' ? 'critical' : 'nominal',
-          progress: objectiveProgress[event.id] || 0,
+          progress: objProgress,
           satisfactionMonth: satisfiedObjectives[event.id],
           targetTimeline: event.targetTimeline,
           isBottleneck,
           errorType,
-          deficit
+          deficit,
+          mathTooltip: buildObjectiveMathTooltip(event, simNW, objProgress, deficit),
         };
       } else if (event.type === 'note') {
         nodeData = {
@@ -857,7 +933,6 @@ function CanvasInternal({
     });
 
     const flowEdges: Edge[] = [];
-    const SAFETY_BUFFER = 500;
     
     timelineEvents.forEach(event => {
       const targetId = `node-${event.id}`;
@@ -873,41 +948,48 @@ function CanvasInternal({
         
         const isLiquidityCrisis = criticalEventIds.includes(event.id);
         const activeSimData = (event.scenario === 'ghost' && ghostSimulationData && ghostSimulationData.length > 0) ? ghostSimulationData : simulationData;
-        const finalMonthData = activeSimData[activeSimData.length - 1] || {};
-        const activeEdges = new Set(finalMonthData.activeEdges || []);
-        const isActive = activeEdges.has(`${depId}-${event.id}`);
 
         const isCriticalEdge = criticalPath.edgeIds.includes(`edge-manual-${sourceId}-${targetId}`);
 
-        const targetNodeStatus = bottleneckStatus[event.id];
-        const targetMonth = event.type === 'objective' ? (event.targetTimeline || 1) : event.month;
-        const simMonthData = activeSimData[targetMonth - 1] || activeSimData[activeSimData.length - 1] || { Financial: 0 };
-        const projectedCapital = simMonthData.Financial || 0;
-        
-        let edgeColor = '#4be277'; // default green
-        let edgeStrokeWidth = 2;
-        let edgeOpacity = 0.5;
-        let edgeAnimated = false;
-        let edgeDasharray = undefined;
+        const targetMonthKey =
+          event.type === 'objective' ? (event.targetTimeline || 1) : Math.max(0, event.month ?? 1);
+        const monthRow =
+          activeSimData.find((d: any) => d.month === targetMonthKey) ||
+          activeSimData[Math.max(0, targetMonthKey - 1)] ||
+          activeSimData[activeSimData.length - 1] ||
+          {};
 
-        if (event.scenario === 'ghost' || sourceEvent?.scenario === 'ghost') {
-          edgeColor = '#a855f7';
-          edgeDasharray = '5, 5';
-        } else if (targetNodeStatus?.isBottleneck || projectedCapital < 0) {
+        const negCashflow =
+          event.type === 'event' &&
+          Number(event.monthlyIncome || 0) - Number(event.ongoingCost || 0) < 0;
+        const pathUnhealthy =
+          Boolean((monthRow as any).violations?.length) ||
+          (monthRow as any).isCrisis === true ||
+          (typeof (monthRow as any).Financial === 'number' && (monthRow as any).Financial < 0) ||
+          negCashflow;
+        const pathGhost = event.scenario === 'ghost' || sourceEvent?.scenario === 'ghost';
+        
+        let edgeColor = '#22c55e';
+        let edgeStrokeWidth = 2;
+        let edgeOpacity = 0.55;
+        let edgeAnimated = false;
+        let edgeDasharray: string | undefined = undefined;
+        let edgeFilter: string | undefined = 'drop-shadow(0 0 4px rgba(34,197,94,0.35))';
+
+        if (pathUnhealthy) {
           edgeColor = '#ef4444';
           edgeStrokeWidth = 3;
-          edgeOpacity = 0.9;
-          edgeAnimated = true;
-        } else if (projectedCapital < SAFETY_BUFFER) {
-          edgeColor = '#eab308';
-          edgeStrokeWidth = 3;
-          edgeOpacity = 0.9;
-          edgeAnimated = true;
-        } else {
-          edgeColor = '#22c55e';
-          edgeStrokeWidth = 2;
           edgeOpacity = 0.5;
+          edgeAnimated = true;
+          edgeDasharray = undefined;
+          edgeFilter = 'drop-shadow(0 0 10px rgba(239,68,68,0.55))';
+        } else if (pathGhost) {
+          edgeColor = 'rgba(228,228,231,0.55)';
+          edgeStrokeWidth = 2;
+          edgeOpacity = 0.65;
           edgeAnimated = false;
+          edgeDasharray = '5,5';
+          edgeFilter = 'drop-shadow(0 0 3px rgba(168,85,247,0.25))';
         }
 
         flowEdges.push({
@@ -921,11 +1003,12 @@ function CanvasInternal({
           data: { 
             slack,
             isLiquidityCrisis,
+            pathUnhealthy,
             onDeleteEdge
           },
           style: isCriticalEdge 
-            ? { stroke: '#FF4500', strokeWidth: 4, filter: 'drop-shadow(0 0 5px #FF4500)' }
-            : { stroke: edgeColor, strokeWidth: edgeStrokeWidth, opacity: showCriticalPath ? 0.1 : edgeOpacity, strokeDasharray: edgeDasharray, filter: edgeAnimated ? `drop-shadow(0 0 5px ${edgeColor})` : undefined },
+            ? { stroke: '#FF4500', strokeWidth: 4, opacity: showCriticalPath ? 0.1 : 0.95, filter: 'drop-shadow(0 0 5px #FF4500)' }
+            : { stroke: edgeColor, strokeWidth: edgeStrokeWidth, opacity: showCriticalPath ? 0.1 : edgeOpacity, strokeDasharray: edgeDasharray, filter: edgeFilter },
           markerEnd: { 
             type: MarkerType.ArrowClosed, 
             color: isCriticalEdge ? '#FF4500' : edgeColor 
@@ -954,6 +1037,7 @@ function CanvasInternal({
   }, [fitView]);
 
   const selectedEvent = timelineEvents.find(e => e.id === selectedNodeId);
+  const systemIdle = timelineEvents.filter((e) => e.type !== 'genesis').length === 0;
 
   return (
     <div className="absolute inset-0 z-0 bg-neutral-950">
@@ -965,11 +1049,13 @@ function CanvasInternal({
           </span>
         </div>
       )}
-      {nodes.length === 0 && (
-        <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-          <div className="backdrop-blur-md border-[0.5px] border-white/5 rounded-3xl p-8 flex flex-col items-center max-w-md text-center shadow-[0_20px_80px_rgba(0,0,0,0.08)] pointer-events-auto bg-neutral-900/40">
-            <h2 className="text-xl font-semibold mb-2">Welcome to your Life Architecture</h2>
-            <p className="text-white/60 text-sm mb-6">Your canvas is completely blank. Click the <span className="text-primary font-mono bg-primary/10 px-1 py-0.5 rounded">[ + NEW STRATEGY ]</span> button at the top to map your first timeline.</p>
+      {systemIdle && (
+        <div className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center">
+          <div className="flex max-w-lg flex-col items-center gap-4 rounded-3xl border border-dashed border-purple-500/25 bg-neutral-950/35 px-10 py-8 text-center shadow-[0_0_40px_rgba(0,0,0,0.35)] backdrop-blur-md">
+            <Ghost className="h-10 w-10 text-purple-400/50" strokeWidth={1.25} aria-hidden />
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-stone-400/90">
+              [ SYSTEM IDLE : DEPLOY TEMPLATE OR ADD NODE TO BEGIN ]
+            </p>
           </div>
         </div>
       )}
@@ -1366,26 +1452,51 @@ function CanvasInternal({
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[9px] font-headline uppercase tracking-widest text-on-surface-variant">Target Capital ($)</label>
-                    <input 
-                      type="number"
-                      value={selectedEvent.targetCapital}
-                      onChange={(e) => handleUpdateEventInternal(selectedEvent.id, { targetCapital: Number(e.target.value) || 0 })}
-                      disabled={appState !== 'PLANNING'}
-                      className="w-full bg-surface-lowest border border-outline-variant/20 rounded-sm py-2 px-3 text-xs font-mono focus:border-primary focus:ring-0 transition-all disabled:opacity-50"
-                    />
+                    <label className="text-[9px] font-headline uppercase tracking-widest text-on-surface-variant">Target capital</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-on-surface-variant">$</span>
+                      <input 
+                        type="number"
+                        value={selectedEvent.targetCapital}
+                        onChange={(e) => handleUpdateEventInternal(selectedEvent.id, { targetCapital: Number(e.target.value) || 0 })}
+                        disabled={appState !== 'PLANNING'}
+                        className="w-full bg-surface-lowest border border-outline-variant/20 rounded-sm py-2 pl-7 pr-3 text-xs font-mono focus:border-primary focus:ring-0 transition-all disabled:opacity-50"
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[9px] font-headline uppercase tracking-widest text-on-surface-variant">Target Timeline (Months)</label>
-                    <input 
+                    <label className="text-[9px] font-headline uppercase tracking-widest text-on-surface-variant">Target timeline</label>
+                    <div className="flex items-stretch gap-1.5">
+                      <input 
+                        type="number"
+                        min="1"
+                        max="120"
+                        value={selectedEvent.targetTimeline}
+                        onChange={(e) => handleUpdateEventInternal(selectedEvent.id, { targetTimeline: Number(e.target.value) || 0 })}
+                        disabled={appState !== 'PLANNING'}
+                        className="min-w-0 flex-1 bg-surface-lowest border border-outline-variant/20 rounded-sm py-2 px-3 text-xs font-mono focus:border-primary focus:ring-0 transition-all disabled:opacity-50"
+                      />
+                      <span className="flex shrink-0 items-center text-[10px] font-mono text-on-surface-variant/80">mo</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-headline uppercase tracking-widest text-on-surface-variant">Weekly hours</label>
+                    <input
                       type="number"
-                      min="1"
-                      max="120"
-                      value={selectedEvent.targetTimeline}
-                      onChange={(e) => handleUpdateEventInternal(selectedEvent.id, { targetTimeline: Number(e.target.value) || 0 })}
+                      min="0"
+                      step="0.5"
+                      value={selectedEvent.weeklyHours ?? 0}
+                      onChange={(e) =>
+                        handleUpdateEventInternal(selectedEvent.id, {
+                          weeklyHours: Number(e.target.value) || 0,
+                        })
+                      }
                       disabled={appState !== 'PLANNING'}
                       className="w-full bg-surface-lowest border border-outline-variant/20 rounded-sm py-2 px-3 text-xs font-mono focus:border-primary focus:ring-0 transition-all disabled:opacity-50"
                     />
+                    <p className="text-[8px] text-on-surface-variant/70 font-mono uppercase tracking-tighter">
+                      Per week while this objective is active in the sim month
+                    </p>
                   </div>
                 </div>
               ) : selectedEvent?.type === 'note' ? (
@@ -1466,63 +1577,93 @@ function CanvasInternal({
                     </div>
                   </div>
 
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-headline uppercase tracking-widest text-on-surface-variant">Weekly hours</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      value={selectedEvent.weeklyHours ?? 0}
+                      onChange={(e) =>
+                        handleUpdateEventInternal(selectedEvent.id, {
+                          weeklyHours: Number(e.target.value) || 0,
+                        })
+                      }
+                      disabled={appState !== 'PLANNING'}
+                      className="w-full bg-surface-lowest border border-outline-variant/20 rounded-sm py-2 px-3 text-xs font-mono focus:border-primary focus:ring-0 transition-all disabled:opacity-50"
+                    />
+                    <p className="text-[8px] text-on-surface-variant/70 font-mono uppercase tracking-tighter">
+                      Per week while active (counts toward daily capacity in Daily Log)
+                    </p>
+                  </div>
+
                   <div className="space-y-4 pt-4 border-t border-outline-variant/10">
                     <div className="space-y-3">
-                      <h4 className="text-[10px] font-headline font-bold uppercase tracking-widest text-secondary">Capital Outflow (Costs)</h4>
+                      <h4 className="text-[10px] font-headline font-bold uppercase tracking-widest text-secondary">Costs</h4>
                       <div className="space-y-2">
-                        <label className="text-[9px] font-headline uppercase tracking-widest text-on-surface-variant">Immediate Cost ($)</label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-on-surface-variant">$</span>
-                          <input 
-                            type="number"
-                            value={selectedEvent.immediateCost ?? 0}
-                            onChange={(e) => handleUpdateEventInternal(selectedEvent.id, { immediateCost: Number(e.target.value) || 0 })}
-                            disabled={appState !== 'PLANNING'}
-                            className="w-full bg-surface-lowest border border-outline-variant/20 rounded-sm py-2 pl-7 pr-3 text-xs font-mono focus:border-secondary focus:ring-0 transition-all disabled:opacity-50"
-                          />
+                        <label className="text-[9px] font-headline uppercase tracking-widest text-on-surface-variant">One-time cost</label>
+                        <div className="flex items-stretch gap-1.5">
+                          <div className="relative min-w-0 flex-1">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-on-surface-variant">$</span>
+                            <input 
+                              type="number"
+                              value={selectedEvent.immediateCost ?? 0}
+                              onChange={(e) => handleUpdateEventInternal(selectedEvent.id, { immediateCost: Number(e.target.value) || 0 })}
+                              disabled={appState !== 'PLANNING'}
+                              className="w-full bg-surface-lowest border border-outline-variant/20 rounded-sm py-2 pl-7 pr-3 text-xs font-mono focus:border-secondary focus:ring-0 transition-all disabled:opacity-50"
+                            />
+                          </div>
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-[9px] font-headline uppercase tracking-widest text-on-surface-variant">Ongoing Monthly Cost ($)</label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-on-surface-variant">$</span>
-                          <input 
-                            type="number"
-                            value={selectedEvent.ongoingCost ?? 0}
-                            onChange={(e) => handleUpdateEventInternal(selectedEvent.id, { ongoingCost: Number(e.target.value) || 0 })}
-                            disabled={appState !== 'PLANNING'}
-                            className="w-full bg-surface-lowest border border-outline-variant/20 rounded-sm py-2 pl-7 pr-3 text-xs font-mono focus:border-secondary focus:ring-0 transition-all disabled:opacity-50"
-                          />
+                        <label className="text-[9px] font-headline uppercase tracking-widest text-on-surface-variant">Monthly cost</label>
+                        <div className="flex items-stretch gap-1.5">
+                          <div className="relative min-w-0 flex-1">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-on-surface-variant">$</span>
+                            <input 
+                              type="number"
+                              value={selectedEvent.ongoingCost ?? 0}
+                              onChange={(e) => handleUpdateEventInternal(selectedEvent.id, { ongoingCost: Number(e.target.value) || 0 })}
+                              disabled={appState !== 'PLANNING'}
+                              className="w-full bg-surface-lowest border border-outline-variant/20 rounded-sm py-2 pl-7 pr-2 text-xs font-mono focus:border-secondary focus:ring-0 transition-all disabled:opacity-50"
+                            />
+                          </div>
+                          <span className="flex shrink-0 items-center text-[10px] font-mono text-on-surface-variant/80">/mo</span>
                         </div>
                       </div>
                     </div>
 
                     <div className="space-y-3 pt-4 border-t border-outline-variant/10">
-                      <h4 className="text-[10px] font-headline font-bold uppercase tracking-widest text-primary">Capital Inflow (Revenue)</h4>
+                      <h4 className="text-[10px] font-headline font-bold uppercase tracking-widest text-primary">Income</h4>
                       <div className="space-y-2">
-                        <label className="text-[9px] font-headline uppercase tracking-widest text-on-surface-variant">Immediate Income ($)</label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-on-surface-variant">$</span>
-                          <input 
-                            type="number"
-                            value={selectedEvent.immediateIncome ?? 0}
-                            onChange={(e) => handleUpdateEventInternal(selectedEvent.id, { immediateIncome: Number(e.target.value) || 0 })}
-                            disabled={appState !== 'PLANNING'}
-                            className="w-full bg-surface-lowest border border-outline-variant/20 rounded-sm py-2 pl-7 pr-3 text-xs font-mono focus:border-primary focus:ring-0 transition-all disabled:opacity-50"
-                          />
+                        <label className="text-[9px] font-headline uppercase tracking-widest text-on-surface-variant">One-time income</label>
+                        <div className="flex items-stretch gap-1.5">
+                          <div className="relative min-w-0 flex-1">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-on-surface-variant">$</span>
+                            <input 
+                              type="number"
+                              value={selectedEvent.immediateIncome ?? 0}
+                              onChange={(e) => handleUpdateEventInternal(selectedEvent.id, { immediateIncome: Number(e.target.value) || 0 })}
+                              disabled={appState !== 'PLANNING'}
+                              className="w-full bg-surface-lowest border border-outline-variant/20 rounded-sm py-2 pl-7 pr-3 text-xs font-mono focus:border-primary focus:ring-0 transition-all disabled:opacity-50"
+                            />
+                          </div>
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-[9px] font-headline uppercase tracking-widest text-on-surface-variant">Ongoing Monthly Income ($)</label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-on-surface-variant">$</span>
-                          <input 
-                            type="number"
-                            value={selectedEvent.monthlyIncome ?? 0}
-                            onChange={(e) => handleUpdateEventInternal(selectedEvent.id, { monthlyIncome: Number(e.target.value) || 0 })}
-                            disabled={appState !== 'PLANNING'}
-                            className="w-full bg-surface-lowest border border-outline-variant/20 rounded-sm py-2 pl-7 pr-3 text-xs font-mono focus:border-primary focus:ring-0 transition-all disabled:opacity-50"
-                          />
+                        <label className="text-[9px] font-headline uppercase tracking-widest text-on-surface-variant">Monthly income</label>
+                        <div className="flex items-stretch gap-1.5">
+                          <div className="relative min-w-0 flex-1">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-on-surface-variant">$</span>
+                            <input 
+                              type="number"
+                              value={selectedEvent.monthlyIncome ?? 0}
+                              onChange={(e) => handleUpdateEventInternal(selectedEvent.id, { monthlyIncome: Number(e.target.value) || 0 })}
+                              disabled={appState !== 'PLANNING'}
+                              className="w-full bg-surface-lowest border border-outline-variant/20 rounded-sm py-2 pl-7 pr-2 text-xs font-mono focus:border-primary focus:ring-0 transition-all disabled:opacity-50"
+                            />
+                          </div>
+                          <span className="flex shrink-0 items-center text-[10px] font-mono text-on-surface-variant/80">/mo</span>
                         </div>
                       </div>
                     </div>

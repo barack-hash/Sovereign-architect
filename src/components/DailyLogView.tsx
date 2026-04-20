@@ -5,7 +5,13 @@ interface DailyLogViewProps {
   nodes: any[];
   currentSimMonth: number;
   systemConstraints?: any;
+  /** Scheduled sleep from Terminal (lived day), not the Constraints policy floor. */
+  requiredSleepHours: number;
+  /** Daily average of active nodes’ weekly hours (weekly sum / 7). */
+  totalDailyHours: number;
   totalFixedCosts: number;
+  /** Full monthly burn (fixed + variable) vs Safety Net maxBurn. */
+  liveMonthlyExpenses: number;
   variableCosts: number;
   projectedYield: number;
   savingsBelowBuffer?: boolean;
@@ -15,7 +21,10 @@ const DailyLogView: React.FC<DailyLogViewProps> = ({
   nodes,
   currentSimMonth,
   systemConstraints,
+  requiredSleepHours,
+  totalDailyHours,
   totalFixedCosts,
+  liveMonthlyExpenses,
   variableCosts,
   projectedYield,
   savingsBelowBuffer = false,
@@ -29,9 +38,9 @@ const DailyLogView: React.FC<DailyLogViewProps> = ({
     return `MONTH ${monthValue > 0 ? monthValue : currentSimMonth}`;
   };
 
-  const minSleep = systemConstraints?.minSleep || 0;
-  const maxLabor = systemConstraints?.maxLabor || 0;
-  const unallocated = 24 - minSleep - maxLabor;
+  const maxLabor = systemConstraints?.maxLabor ?? 0;
+  const unallocated = 24 - requiredSleepHours - totalDailyHours;
+  const capacityOverload = unallocated < 0;
 
   return (
     <div className="flex-1 w-full max-w-6xl mx-auto flex flex-col h-full bg-surface-lowest p-8 overflow-y-auto terminal-scroll">
@@ -53,6 +62,28 @@ const DailyLogView: React.FC<DailyLogViewProps> = ({
           <div className="rounded-lg border border-outline-variant/30 bg-surface-container px-3 py-2">
             <p className="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Total Fixed Costs</p>
             <p className="text-sm font-mono font-bold text-secondary">{formatCurrency(totalFixedCosts)}</p>
+            {Number(systemConstraints?.maxBurn) > 0 && (() => {
+              const cap = Number(systemConstraints.maxBurn) || 1;
+              const pct = Math.min(100, (liveMonthlyExpenses / cap) * 100);
+              const barClass =
+                pct > 90 ? 'bg-red-600 animate-pulse' : pct >= 70 ? 'bg-amber-500' : 'bg-emerald-500';
+              return (
+                <div className="mt-2 space-y-1">
+                  <div className="flex justify-between text-[8px] font-mono uppercase text-on-surface-variant/80">
+                    <span>Burn vs redline</span>
+                    <span>
+                      {formatCurrency(liveMonthlyExpenses)} / {formatCurrency(systemConstraints.maxBurn)}
+                    </span>
+                  </div>
+                  <div className="h-px w-full overflow-hidden rounded-full bg-surface-highest">
+                    <div
+                      className={cn('h-px rounded-full transition-all duration-300', barClass)}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
           </div>
           <div className="rounded-lg border border-outline-variant/30 bg-surface-container px-3 py-2">
             <p className="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Variable Costs</p>
@@ -104,15 +135,22 @@ const DailyLogView: React.FC<DailyLogViewProps> = ({
               ))
             ) : (
               <div className="flex-1 flex items-center justify-center">
-                <p className="text-on-surface-variant font-mono text-sm opacity-50">
-                  No active operations for this month.
+                <p className="text-on-surface-variant font-mono text-sm opacity-70">
+                  No active operations detected for this cycle.
                 </p>
               </div>
             )}
           </div>
         </div>
 
-        <div className="border border-outline-variant/30 rounded-lg p-6 bg-surface-container flex flex-col">
+        <div
+          className={cn(
+            'border rounded-lg p-6 bg-surface-container flex flex-col transition-colors',
+            capacityOverload
+              ? 'border-red-600/70 ring-2 ring-red-600/40 animate-pulse shadow-[0_0_20px_rgba(220,38,38,0.25)]'
+              : 'border-outline-variant/30'
+          )}
+        >
           <div className="flex items-center justify-between mb-6 border-b border-outline-variant/20 pb-2">
             <h3 className="text-md font-headline font-bold text-secondary tracking-widest uppercase">
               [ 24-HOUR CAPACITY ]
@@ -125,7 +163,7 @@ const DailyLogView: React.FC<DailyLogViewProps> = ({
             </div>
             <div className="flex justify-between items-center p-3 border-b border-outline-variant/10">
               <span className="text-on-surface-variant font-mono text-sm uppercase tracking-wider">Required Sleep</span>
-              <span className="text-on-surface font-mono font-bold">{minSleep} Hrs</span>
+              <span className="text-on-surface font-mono font-bold">{requiredSleepHours.toFixed(1)} Hrs</span>
             </div>
             <div className="flex justify-between items-center p-3 border-b border-outline-variant/10">
               <span className="text-on-surface-variant font-mono text-sm uppercase tracking-wider">Max Labor</span>
@@ -133,11 +171,13 @@ const DailyLogView: React.FC<DailyLogViewProps> = ({
             </div>
             <div className="flex justify-between items-center p-3 mt-auto border-t border-outline-variant/30 pt-4">
               <span className="text-on-surface font-headline font-bold text-sm uppercase tracking-wider">Unallocated</span>
-              <span className={cn(
-                "font-mono font-bold text-lg",
-                unallocated < 0 ? "text-error" : "text-primary"
-              )}>
-                {unallocated} Hrs
+              <span
+                className={cn(
+                  'font-mono font-bold text-lg',
+                  capacityOverload ? 'text-red-600' : 'text-primary'
+                )}
+              >
+                {unallocated.toFixed(1)} Hrs
               </span>
             </div>
           </div>
