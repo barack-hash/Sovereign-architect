@@ -18,15 +18,13 @@ interface SidebarProps {
   setActiveTab: (tab: string) => void;
   onExport: () => void;
   onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  theme: 'dark' | 'light';
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
   activeTab, 
   setActiveTab, 
   onExport, 
-  onImport,
-  theme
+  onImport
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(true);
 
@@ -43,7 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       onMouseLeave={() => setIsCollapsed(true)}
       className={cn(
         "h-full shrink-0 backdrop-blur-xl border-[0.5px] rounded-2xl shadow-[0_20px_80px_rgba(0,0,0,0.08)] flex flex-col py-4 transition-all duration-300 ease-in-out z-40 overflow-hidden",
-        theme === 'light' ? "bg-white/55 border-red-900/10 shadow-red-900/5" : "bg-neutral-900/35 border-white/5",
+        "bg-neutral-900/35 border-white/5",
         isCollapsed ? "w-16 items-center" : "w-48"
       )}
     >

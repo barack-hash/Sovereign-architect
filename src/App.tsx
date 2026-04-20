@@ -387,7 +387,6 @@ export default function App() {
     { id: '3', name: 'Utilities', amount: 200, frequency: 'monthly' },
     { id: '4', name: 'Transport', amount: 10, frequency: 'daily' },
   ]);
-  const [theme, setTheme] = useLocalStorage<'dark' | 'light'>('app-theme', 'dark');
 
   const [investmentYield, setInvestmentYield] = useLocalStorage('sovereign-yield', 7.2);
   
@@ -1500,12 +1499,8 @@ export default function App() {
   };
   const projectedNetWorth = currentData.Financial;
   const netChange = projectedNetWorth - initialNetWorth;
-  const glassPanelClass = theme === 'light'
-    ? 'bg-white/60 border-red-900/20 shadow-red-900/5'
-    : 'bg-neutral-900/40 border-white/10';
-  const glassPanelStrongClass = theme === 'light'
-    ? 'bg-white/60 border-red-900/20 shadow-red-900/5'
-    : 'bg-neutral-900/60 border-white/10';
+  const glassPanelClass = 'bg-neutral-900/40 border-[0.5px] border-white/5';
+  const glassPanelStrongClass = 'bg-neutral-900/60 border-[0.5px] border-white/5';
   const monthlyNetChange = netChange / (targetTimeline || 1);
   const currentSystemHealth = initialSystemHealth; // For display
   const totalReclaimedTime = useMemo(() => timelineEvents
@@ -1706,10 +1701,7 @@ export default function App() {
           </div>
         </div>
       ) : (
-        <div className={cn(
-          "relative h-screen w-screen overflow-hidden font-sans",
-          theme === 'light' ? 'bg-stone-100 text-stone-900' : 'bg-neutral-950 text-white'
-        )}>
+        <div className="relative h-screen w-screen overflow-hidden font-sans bg-neutral-950 text-white">
       {chaosReport && (
         <div className="absolute top-24 right-8 z-[100] drop-shadow-2xl">
           <div className={cn("backdrop-blur-2xl border p-6 max-w-md text-center shadow-2xl rounded-2xl", glassPanelStrongClass)}>
@@ -1745,7 +1737,6 @@ export default function App() {
           setActiveTab={setActiveTab} 
           onExport={handleExport} 
           onImport={handleImport} 
-          theme={theme}
         />
       </div>
 
@@ -1753,178 +1744,85 @@ export default function App() {
       <div className="absolute inset-0 min-w-0 min-h-0 flex flex-col z-0 overflow-hidden">
         <div className="flex flex-col min-h-0 h-full">
           {/* Header */}
-            <header className={cn("absolute top-4 left-1/2 -translate-x-1/2 w-[min(94vw,1100px)] backdrop-blur-xl border-[0.5px] rounded-2xl shadow-[0_20px_80px_rgba(0,0,0,0.08)] px-4 py-2.5 flex justify-between items-center z-40 gap-3", glassPanelClass)}>
-          <div className="flex items-center gap-3 flex-1 min-w-[260px]">
-            <div className="flex items-center bg-white/5 px-3 py-1.5 rounded-xl border border-white/10 flex-1 max-w-72 group focus-within:border-primary/50 transition-all">
-              <Search size={14} className="text-on-surface-variant group-focus-within:text-primary transition-colors" />
-              <input 
-                type="text" 
-                placeholder="QUERY PARAMETERS..." 
-                className="bg-transparent border-none focus:ring-0 text-[9px] font-headline tracking-[0.2em] uppercase w-full placeholder:text-on-surface-variant/50 ml-2"
-              />
-            </div>
-            {isTripwireTriggered && (
-              <motion.div 
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                  className="flex items-center gap-2 px-2.5 py-1 bg-secondary/10 border border-secondary/20 text-secondary animate-pulse rounded-lg"
-              >
-                <AlertTriangle size={12} />
-                <span className="text-[8px] font-mono font-bold uppercase tracking-[0.18em]">TRIPWIRE: {primaryVulnerability.label}</span>
-              </motion.div>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap justify-end">
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-surface-container border-[0.5px] border-outline-variant/10 rounded-lg">
-              <div className="relative group cursor-help flex items-center gap-1">
-                <span className="text-[10px] font-headline tracking-tighter text-on-surface-variant uppercase">Monthly Expenses:</span>
-                <span className="text-white/30 text-[10px] ml-1">(?)</span>
-                <div className="absolute hidden group-hover:block top-full mt-2 left-1/2 -translate-x-1/2 w-56 p-3 bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-xl text-xs text-white/80 text-center shadow-2xl z-50 pointer-events-none transition-all">
-                  Your total recurring monthly costs across all active operations.
+          {activeTab !== 'Constraints' && activeTab !== 'Goals' && (
+            <header className={cn("fixed top-6 left-1/2 -translate-x-1/2 w-fit max-w-[92vw] backdrop-blur-md border-[0.5px] rounded-full shadow-[0_20px_80px_rgba(0,0,0,0.12)] px-4 py-2 z-40 transition-all duration-300 group", glassPanelClass)}>
+              <div className="flex items-center gap-4 text-[10px] tracking-[0.2em] uppercase">
+                <div className="flex items-center gap-2">
+                  <span className="text-white/50">Monthly Savings</span>
+                  <span className={cn("font-mono font-bold", netMonthlyYield < 0 ? "text-red-600" : "text-emerald-500")}>
+                    {formatCurrency(netMonthlyYield)}
+                  </span>
+                </div>
+                <div className="w-px h-3 bg-white/10" />
+                <div className="flex items-center gap-2">
+                  <span className="text-white/50">Net Worth</span>
+                  <span className={cn("font-mono font-bold", projectedNetWorth < 0 ? "text-red-600" : "text-emerald-500")}>
+                    {formatCurrency(projectedNetWorth)}
+                  </span>
                 </div>
               </div>
-              <span className={cn(
-                "text-[10px] font-mono font-bold transition-colors duration-300",
-                isRecalculating ? "text-primary" : "text-secondary"
-              )}>
-                {formatCurrency(totalMonthlyBurnRate)}/MO
-              </span>
-            </div>
-            <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-surface-container border-[0.5px] border-outline-variant/10 rounded-lg">
-              <div className="relative group cursor-help flex items-center gap-1">
-                <span className="text-[10px] font-headline tracking-tighter text-on-surface-variant uppercase">Monthly Savings:</span>
-                <span className="text-white/30 text-[10px] ml-1">(?)</span>
-                <div className="absolute hidden group-hover:block top-full mt-2 left-1/2 -translate-x-1/2 w-56 p-3 bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-xl text-xs text-white/80 text-center shadow-2xl z-50 pointer-events-none transition-all">
-                  Your net positive cash flow after all expenses are deducted.
-                </div>
-              </div>
-              <span className={cn(
-                "text-[10px] font-mono font-bold transition-colors duration-300",
-                isRecalculating ? "text-primary" : (netMonthlyYield < 0 ? "text-secondary animate-pulse" : "text-primary")
-              )}>
-                {formatCurrency(netMonthlyYield)}/MO
-              </span>
-            </div>
-
-            {/* What-If Yield Slider */}
-            <div className="hidden lg:flex flex-col items-center justify-center border-l border-white/10 pl-3 ml-1">
-              <div className="relative group cursor-help flex items-center gap-1">
-                <span className="text-[9px] font-mono text-primary/70 uppercase tracking-widest mb-1">
-                  SAVINGS TWEAK: {((yieldMultiplier - 1) * 100).toFixed(0)}%
-                </span>
-                <span className="text-white/30 text-[10px] ml-1">(?)</span>
-                <div className="absolute hidden group-hover:block top-full mt-2 left-1/2 -translate-x-1/2 w-56 p-3 bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-xl text-xs text-white/80 text-center shadow-2xl z-50 pointer-events-none transition-all">
-                  Simulate saving extra money each month to see how it speeds up your timeline.
-                </div>
-              </div>
-              <input 
-                type="range" 
-                min="0.5" 
-                max="1.5" 
-                step="0.05" 
-                value={yieldMultiplier} 
-                onChange={(e) => setYieldMultiplier(parseFloat(e.target.value))} 
-                className="w-24 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-primary"
-              />
-            </div>
-            
-            {/* SYSTEM ALARM WIDGET */}
-            <div className={cn(
-              "hidden lg:flex items-center gap-2 px-3 py-1 border-[0.5px] rounded-lg transition-all duration-300",
-              (simulationData[currentSimulationMonth]?.violations?.length || 0) > 0
-                ? "bg-red-900/20 border-red-500/50 text-red-400 animate-pulse"
-                : "bg-emerald-900/20 border-emerald-500/30 text-emerald-400"
-            )}>
-              <span className="text-[10px] font-mono font-bold tracking-widest uppercase">
-                {(simulationData[currentSimulationMonth]?.violations?.length || 0) > 0
-                  ? `[!!] BREACH: ${simulationData[currentSimulationMonth].violations[0]}`
-                  : "[ OK ] SYSTEM NOMINAL"}
-              </span>
-            </div>
-            <AnimatePresence>
-              {showAutoSave && (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                className="flex items-center gap-2 px-2.5 py-1 bg-primary/10 border border-primary/20 rounded-lg"
+              <div className="hidden group-hover:flex items-center gap-2 mt-3 pt-3 border-t border-white/5">
+                <button 
+                  onClick={handleResetStrategy}
+                  className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border-[0.5px] border-white/5 text-[10px] font-semibold tracking-[0.16em] uppercase backdrop-blur-md transition-all text-emerald-500"
                 >
-                  <CheckCircle2 size={12} className="text-primary" />
-                  <span className="text-[9px] font-headline font-bold text-primary uppercase tracking-widest">Auto-Saved</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-            <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-surface-container border-[0.5px] border-outline-variant/10 rounded-lg">
-              <span className={cn("w-2 h-2 rounded-full bg-primary", isCalculating ? "animate-ping" : "animate-pulse")} />
-              <span className="text-[10px] font-headline tracking-tighter text-on-surface-variant uppercase">
-                {isCalculating ? "Processing..." : "Engine Online"}
-              </span>
-            </div>
-            <div className="flex gap-2 items-center">
-              <button 
-                onClick={handleResetStrategy}
-                className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border-[0.5px] border-white/10 text-[10px] font-semibold tracking-[0.16em] uppercase backdrop-blur-md transition-all text-secondary"
-              >
-                [ NEW ]
-              </button>
-              <button 
-                onClick={runChaosSimulation}
-                disabled={isSimulating}
-                className={cn(
-                  "px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border-[0.5px] border-white/10 text-[10px] font-semibold tracking-[0.16em] uppercase backdrop-blur-md transition-all disabled:opacity-50",
-                  isSimulating && "animate-pulse"
-                )}
-              >
-                {isSimulating ? "SIM..." : "SIM"}
-              </button>
-              <button 
-                onClick={toggleProtocol}
-                className={cn(
-                  "px-3 py-1.5 rounded-xl border-[0.5px] border-white/10 text-[10px] font-semibold tracking-[0.16em] uppercase backdrop-blur-md transition-all",
-                  appState === 'PLANNING' 
-                    ? "bg-primary text-black hover:bg-primary/90" 
-                    : "bg-secondary text-black hover:bg-secondary/90 animate-pulse"
-                )}
-              >
-                {appState === 'PLANNING' ? "[ RUN ]" : "[ ABORT ]"}
-              </button>
-              <button onClick={handleLock} className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border-[0.5px] border-white/10 text-[10px] font-semibold tracking-[0.16em] uppercase backdrop-blur-md transition-all text-red-500 ml-1">[ LOCK ]</button>
-              <div className="relative group cursor-help flex items-center gap-1">
+                  [ NEW ]
+                </button>
+                <button 
+                  onClick={runChaosSimulation}
+                  disabled={isSimulating}
+                  className={cn(
+                    "px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border-[0.5px] border-white/5 text-[10px] font-semibold tracking-[0.16em] uppercase backdrop-blur-md transition-all disabled:opacity-50",
+                    isSimulating && "animate-pulse"
+                  )}
+                >
+                  {isSimulating ? "SIM..." : "SIM"}
+                </button>
+                <button 
+                  onClick={toggleProtocol}
+                  className={cn(
+                    "px-3 py-1.5 rounded-xl border-[0.5px] border-white/5 text-[10px] font-semibold tracking-[0.16em] uppercase backdrop-blur-md transition-all",
+                    appState === 'PLANNING' 
+                      ? "bg-emerald-500 text-black hover:bg-emerald-400" 
+                      : "bg-red-600 text-white hover:bg-red-500 animate-pulse"
+                  )}
+                >
+                  {appState === 'PLANNING' ? "[ RUN ]" : "[ ABORT ]"}
+                </button>
                 <button 
                   onClick={() => setIsGhostMode(!isGhostMode)} 
-                  className={`px-3 py-1.5 rounded-xl border-[0.5px] border-white/10 text-[10px] font-semibold tracking-[0.16em] uppercase backdrop-blur-md transition-all ml-1 ${isGhostMode ? 'text-purple-500 bg-purple-500/10 border-purple-500/50' : 'text-white/50 bg-white/5 hover:bg-white/10'}`}
+                  className={`px-3 py-1.5 rounded-xl border-[0.5px] border-white/5 text-[10px] font-semibold tracking-[0.16em] uppercase backdrop-blur-md transition-all ${isGhostMode ? 'text-emerald-500 bg-emerald-500/10' : 'text-white/60 bg-white/5 hover:bg-white/10'}`}
                 >
                   {isGhostMode ? '[ SCENARIO PLANNER: ON ]' : '[ SCENARIO PLANNER: OFF ]'}
                 </button>
-                <div className="absolute hidden group-hover:block top-full mt-2 left-1/2 -translate-x-1/2 w-56 p-3 bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-xl text-xs text-white/80 text-center shadow-2xl z-50 pointer-events-none transition-all">
-                  Isolate a parallel timeline to test risky decisions without affecting your main path.
+                <button onClick={handleLock} className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border-[0.5px] border-white/5 text-[10px] font-semibold tracking-[0.16em] uppercase backdrop-blur-md transition-all text-red-600">[ LOCK ]</button>
+                <div className="flex items-center gap-2 pl-2 border-l border-white/5">
+                  <button
+                    onClick={() => setViewMode('terminal')}
+                    className={cn(
+                      "px-3 py-1 rounded-lg text-[9px] font-semibold uppercase tracking-[0.16em] border-[0.5px] border-white/5",
+                      viewMode === 'terminal' ? "text-emerald-500 bg-white/10" : "text-white/60"
+                    )}
+                  >
+                    Terminal
+                  </button>
+                  <button
+                    onClick={() => setViewMode('canvas')}
+                    className={cn(
+                      "px-3 py-1 rounded-lg text-[9px] font-semibold uppercase tracking-[0.16em] border-[0.5px] border-white/5",
+                      viewMode === 'canvas' ? "text-emerald-500 bg-white/10" : "text-white/60"
+                    )}
+                  >
+                    Canvas
+                  </button>
                 </div>
               </div>
-              <button
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className={cn(
-                  "px-3 py-1.5 rounded-xl border-[0.5px] text-[10px] font-semibold tracking-[0.16em] uppercase backdrop-blur-md transition-all ml-1",
-                  theme === 'light'
-                    ? "bg-white/60 border-red-900/20 shadow-red-900/5 text-red-900 hover:bg-white/80"
-                    : "bg-white/5 hover:bg-white/10 border-white/10 text-white/80"
-                )}
-              >
-                [ THEME: {theme.toUpperCase()} ]
-              </button>
-            </div>
-            <div className="flex gap-3 ml-1 border-l border-outline-variant/20 pl-3">
-              <Bell size={18} className="text-on-surface-variant cursor-pointer hover:text-primary transition-colors" />
-              <div className="w-8 h-8 rounded-full bg-surface-highest flex items-center justify-center cursor-pointer hover:border hover:border-primary/50 transition-all">
-                <User size={16} />
-              </div>
-            </div>
-          </div>
-        </header>
+            </header>
+          )}
 
         {/* Tabbed Navigation */}
         {activeTab === 'Path Simulations' && (
-          <div className={cn("absolute top-20 left-1/2 -translate-x-1/2 z-40 flex backdrop-blur-xl border-[0.5px] rounded-2xl px-1.5 py-1 shadow-[0_20px_80px_rgba(0,0,0,0.08)]", glassPanelClass)}>
+          <div className={cn("fixed top-20 left-1/2 -translate-x-1/2 z-40 flex backdrop-blur-md border-[0.5px] rounded-2xl px-1.5 py-1 shadow-[0_20px_80px_rgba(0,0,0,0.08)]", glassPanelClass)}>
             <button 
               onClick={() => setViewMode('terminal')}
               className={cn(
@@ -1951,11 +1849,21 @@ export default function App() {
         {/* Dashboard Content */}
         <div className="absolute inset-0 min-h-0 min-w-0 flex overflow-hidden pt-28 pb-16 px-4">
           {activeTab === 'Constraints' ? (
-            <ConstraintsView systemConstraints={systemConstraints} setSystemConstraints={setSystemConstraints} />
+            <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50 p-4">
+              <div className="relative max-w-2xl w-full bg-neutral-900/80 border-[0.5px] border-white/10 p-8 rounded-3xl shadow-2xl backdrop-blur-md">
+                <button onClick={() => setActiveTab('Path Simulations')} className="absolute top-4 right-4 text-red-600 font-mono text-sm">[ X ]</button>
+                <ConstraintsView systemConstraints={systemConstraints} setSystemConstraints={setSystemConstraints} />
+              </div>
+            </div>
           ) : activeTab === 'Daily Log' ? (
             <DailyLogView nodes={timelineEvents} currentSimMonth={currentSimulationMonth} systemConstraints={systemConstraints} />
           ) : activeTab === 'Goals' ? (
-            <GoalsView nodes={timelineEvents} simulationData={simulationData} currentSimMonth={currentSimulationMonth} />
+            <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50 p-4">
+              <div className="relative max-w-2xl w-full bg-neutral-900/80 border-[0.5px] border-white/10 p-8 rounded-3xl shadow-2xl backdrop-blur-md">
+                <button onClick={() => setActiveTab('Path Simulations')} className="absolute top-4 right-4 text-red-600 font-mono text-sm">[ X ]</button>
+                <GoalsView nodes={timelineEvents} simulationData={simulationData} currentSimMonth={currentSimulationMonth} />
+              </div>
+            </div>
           ) : activeTab === 'Settings' ? (
             <SettingsView />
           ) : activeTab === 'Support' ? (
@@ -2871,7 +2779,7 @@ export default function App() {
           </div>
 
           {/* Variable Input Sidebar */}
-          <div className="w-80 border-l border-outline-variant/20 bg-surface flex flex-col h-full overflow-hidden">
+          <div className="group absolute right-4 top-24 bottom-24 w-12 hover:w-80 transition-all duration-500 ease-in-out overflow-hidden border-[0.5px] border-white/5 bg-neutral-900/60 backdrop-blur-md flex flex-col h-auto z-40 rounded-2xl">
             <div className="p-6 border-b border-outline-variant/10">
               <h3 className="text-xs font-headline uppercase tracking-widest font-bold flex items-center">
                 <Terminal size={14} className="mr-2 text-primary" />
@@ -2879,7 +2787,7 @@ export default function App() {
               </h3>
             </div>
             
-            <div className="flex-1 overflow-y-auto terminal-scroll p-6 space-y-8">
+            <div className="flex-1 overflow-y-auto terminal-scroll p-6 space-y-8 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
               {/* Genesis State */}
               <section className="space-y-4">
                 <h4 className="text-[10px] font-headline uppercase text-primary tracking-widest font-bold">Genesis State</h4>
@@ -3348,13 +3256,12 @@ export default function App() {
           onTidyGrid={handleTidyGrid}
           onLogCompleted={handleLogCompleted}
           onTraceCriticalPath={traceCriticalPath}
-          theme={theme}
         />
         )}
       </div>
 
       {/* Bottom Ticker */}
-        <footer className={cn("absolute bottom-4 left-1/2 -translate-x-1/2 w-[min(94vw,1100px)] h-9 backdrop-blur-xl border-[0.5px] rounded-2xl flex items-center overflow-hidden z-20 shadow-[0_20px_80px_rgba(0,0,0,0.08)]", glassPanelClass)}>
+        <footer className={cn("absolute bottom-4 left-1/2 -translate-x-1/2 w-[min(94vw,1100px)] h-9 backdrop-blur-md border-[0.5px] rounded-2xl flex items-center overflow-hidden z-40 shadow-[0_20px_80px_rgba(0,0,0,0.08)]", glassPanelClass)}>
           <div className="flex items-center gap-12 px-6 whitespace-nowrap animate-marquee">
             {[
               { label: 'NET WORTH', value: formatCurrency(projectedNetWorth), color: 'text-primary' },
