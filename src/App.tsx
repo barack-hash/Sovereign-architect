@@ -1853,7 +1853,7 @@ export default function App() {
             <SupportView />
           ) : viewMode === 'terminal' ? (
             <>
-              <div className="flex-1 overflow-y-auto terminal-scroll p-8 pr-[22rem] space-y-10">
+              <div className="flex-1 w-full max-w-6xl mx-auto overflow-y-auto terminal-scroll p-8 pr-[20rem] space-y-10">
             {/* Pentagon of Capital Header */}
             <section>
               <div className="flex items-center justify-between mb-6">
@@ -3245,7 +3245,7 @@ export default function App() {
 
       {/* Bottom Ticker */}
         {!isModalView && (
-        <footer className={cn("absolute bottom-4 left-1/2 -translate-x-1/2 w-[min(94vw,1100px)] h-9 backdrop-blur-md border-[0.5px] rounded-2xl flex items-center overflow-hidden z-40 shadow-[0_20px_80px_rgba(0,0,0,0.08)]", glassPanelClass)}>
+        <footer className={cn("absolute bottom-4 left-1/2 -translate-x-1/2 w-[min(94vw,1100px)] h-9 backdrop-blur-md border-[0.5px] rounded-2xl flex items-center overflow-hidden z-[100] shadow-[0_20px_80px_rgba(0,0,0,0.08)]", glassPanelClass)}>
           <div className="flex items-center gap-12 px-6 whitespace-nowrap animate-marquee">
             {[
               { label: 'NET WORTH', value: formatCurrency(projectedNetWorth), color: 'text-primary' },

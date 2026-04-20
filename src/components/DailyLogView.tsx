@@ -15,7 +15,7 @@ const DailyLogView: React.FC<DailyLogViewProps> = ({ nodes, currentSimMonth, sys
   const unallocated = 24 - minSleep - maxLabor;
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-surface-lowest p-8 overflow-y-auto terminal-scroll">
+    <div className="flex-1 w-full max-w-6xl mx-auto flex flex-col h-full bg-surface-lowest p-8 overflow-y-auto terminal-scroll">
       {/* Main Header */}
       <div className="mb-8 border-b border-outline-variant/20 pb-4">
         <h1 className="text-xl font-headline font-bold text-primary tracking-widest uppercase">
