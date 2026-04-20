@@ -141,6 +141,7 @@ type GenesisNodeData = {
   spiritual: number;
   isActive: boolean;
   scenario?: 'primary' | 'ghost';
+  theme?: 'dark' | 'light';
 };
 type GenesisNode = Node<GenesisNodeData, 'genesis'>;
 
@@ -179,12 +180,15 @@ const OmniHandles = ({ color = '#4be277' }: { color?: string }) => (
 
 const GenesisNode = ({ data, selected }: NodeProps<GenesisNode>) => (
   <div className={cn(
-    "min-w-[280px] bg-neutral-950/70 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl relative transition-all",
+    "min-w-[280px] backdrop-blur-xl border rounded-2xl p-4 shadow-2xl relative transition-all",
+    data?.theme === 'light' ? "bg-white/70 border-red-900/20 shadow-red-900/5" : "bg-neutral-950/70 border-white/10",
     data?.scenario === 'ghost' && "opacity-50 border-dashed border-purple-500/50"
   )}
   style={{
-    borderColor: data?.scenario === 'ghost' ? undefined : NODE_COLORS.genesis.border,
-    boxShadow: selected ? NODE_COLORS.genesis.glowSelected : NODE_COLORS.genesis.glow,
+    borderColor: data?.scenario === 'ghost' ? undefined : (data?.theme === 'light' ? 'rgba(127, 29, 29, 0.35)' : NODE_COLORS.genesis.border),
+    boxShadow: data?.theme === 'light'
+      ? (selected ? '0 0 20px rgba(127, 29, 29, 0.25)' : '0 0 8px rgba(127, 29, 29, 0.15)')
+      : (selected ? NODE_COLORS.genesis.glowSelected : NODE_COLORS.genesis.glow),
     borderWidth: selected ? '4px' : '2px',
   }}
   >
@@ -229,20 +233,26 @@ type EventNodeData = {
   isBottleneck?: boolean;
   errorType?: string;
   scenario?: 'primary' | 'ghost';
+  theme?: 'dark' | 'light';
   onDelete: () => void 
 };
 type EventNode = Node<EventNodeData, 'event'>;
 
 const EventNode = ({ data, selected }: NodeProps<EventNode>) => (
   <div className={cn(
-    "min-w-[280px] bg-neutral-950/70 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl relative transition-all group",
+    "min-w-[280px] backdrop-blur-xl border rounded-2xl p-4 shadow-2xl relative transition-all group",
+    data?.theme === 'light' ? "bg-white/70 border-red-900/20 shadow-red-900/5" : "bg-neutral-950/70 border-white/10",
     data?.isBottleneck && data?.errorType === 'UNLINKED' && "ring-2 ring-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)] animate-pulse",
     data?.isBottleneck && data?.errorType === 'BLOCKED_BY_PARENT' && "ring-2 ring-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.5)] animate-pulse",
     data?.scenario === 'ghost' && "opacity-50 border-dashed border-purple-500/50"
   )}
   style={{
-    borderColor: data?.scenario === 'ghost' ? undefined : NODE_COLORS.event.border,
-    boxShadow: data?.isBottleneck ? undefined : (selected ? NODE_COLORS.event.glowSelected : NODE_COLORS.event.glow),
+    borderColor: data?.scenario === 'ghost' ? undefined : (data?.theme === 'light' ? 'rgba(127, 29, 29, 0.35)' : NODE_COLORS.event.border),
+    boxShadow: data?.isBottleneck ? undefined : (
+      data?.theme === 'light'
+        ? (selected ? '0 0 20px rgba(127, 29, 29, 0.25)' : '0 0 8px rgba(127, 29, 29, 0.15)')
+        : (selected ? NODE_COLORS.event.glowSelected : NODE_COLORS.event.glow)
+    ),
     borderWidth: selected ? '4px' : '2px',
   }}
   >
@@ -349,20 +359,26 @@ type ObjectiveNodeData = {
   errorType?: string;
   deficit?: number;
   scenario?: 'primary' | 'ghost';
+  theme?: 'dark' | 'light';
 };
 type ObjectiveNode = Node<ObjectiveNodeData, 'objective'>;
 
 const ObjectiveNode = ({ data, selected }: NodeProps<ObjectiveNode>) => (
   <div className={cn(
-    "min-w-[280px] bg-neutral-950/70 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl relative transition-all",
+    "min-w-[280px] backdrop-blur-xl border rounded-2xl p-4 shadow-2xl relative transition-all",
+    data?.theme === 'light' ? "bg-white/70 border-red-900/20 shadow-red-900/5" : "bg-neutral-950/70 border-white/10",
     data?.isBottleneck && data?.errorType === 'UNLINKED' && "ring-2 ring-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)] animate-pulse",
     data?.isBottleneck && data?.errorType === 'BLOCKED_BY_PARENT' && "ring-2 ring-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.5)] animate-pulse",
     data?.isBottleneck && data?.errorType === 'DEFICIT' && "ring-2 ring-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.5)] animate-pulse",
     data?.scenario === 'ghost' && "opacity-50 border-dashed border-purple-500/50"
   )}
   style={{
-    borderColor: data?.scenario === 'ghost' ? undefined : NODE_COLORS.objective.border,
-    boxShadow: data?.isBottleneck ? undefined : (selected ? NODE_COLORS.objective.glowSelected : NODE_COLORS.objective.glow),
+    borderColor: data?.scenario === 'ghost' ? undefined : (data?.theme === 'light' ? 'rgba(127, 29, 29, 0.35)' : NODE_COLORS.objective.border),
+    boxShadow: data?.isBottleneck ? undefined : (
+      data?.theme === 'light'
+        ? (selected ? '0 0 20px rgba(127, 29, 29, 0.25)' : '0 0 8px rgba(127, 29, 29, 0.15)')
+        : (selected ? NODE_COLORS.objective.glowSelected : NODE_COLORS.objective.glow)
+    ),
     borderWidth: selected ? '4px' : '2px',
   }}
   >
@@ -442,12 +458,13 @@ const ObjectiveNode = ({ data, selected }: NodeProps<ObjectiveNode>) => (
   </div>
 );
 
-type NoteNodeData = { content: string; scenario?: 'primary' | 'ghost' };
+type NoteNodeData = { content: string; scenario?: 'primary' | 'ghost'; theme?: 'dark' | 'light' };
 type NoteNode = Node<NoteNodeData, 'note'>;
 
 const NoteNode = ({ data }: NodeProps<NoteNode>) => (
   <div className={cn(
-    "bg-neutral-950/70 backdrop-blur-xl border border-white/10 rounded-2xl p-3 min-w-[150px] max-w-[250px] shadow-2xl",
+    "backdrop-blur-xl border rounded-2xl p-3 min-w-[150px] max-w-[250px] shadow-2xl",
+    data?.theme === 'light' ? "bg-white/70 border-red-900/20 shadow-red-900/5" : "bg-neutral-950/70 border-white/10",
     data?.scenario === 'ghost' && "opacity-50 border-dashed border-purple-500/50"
   )}>
     <div className="flex items-center gap-2 mb-2 border-b border-outline-variant/10 pb-1">
@@ -515,6 +532,7 @@ interface CanvasViewProps {
   canRedo: boolean;
   onLogCompleted: (id: string) => void;
   onTraceCriticalPath: () => void;
+  theme?: 'dark' | 'light';
 }
 
 export default function CanvasView(props: CanvasViewProps) {
@@ -568,6 +586,7 @@ function CanvasInternal({
   canRedo,
   onLogCompleted,
   onTraceCriticalPath,
+  theme = 'dark',
 }: CanvasViewProps) {
   const { screenToFlowPosition, fitView } = useReactFlow();
   const [draggingNodeId, setDraggingNodeId] = React.useState<string | null>(null);
@@ -780,6 +799,7 @@ function CanvasInternal({
         month: event.month,
         nodeStatus,
         scenario: event.scenario,
+        theme,
         onDelete: () => onDeleteEvent(event.id)
       };
 
@@ -920,7 +940,7 @@ function CanvasInternal({
     });
 
     return { derivedNodes: flowNodes, derivedEdges: flowEdges };
-  }, [initialHealth, timelineEvents, simulationData, ghostSimulationData, onDeleteEvent, criticalEventIds, targetTimeline, draggingNodeId, onDeleteEdge, showCriticalPath]);
+  }, [initialHealth, timelineEvents, simulationData, ghostSimulationData, onDeleteEvent, criticalEventIds, targetTimeline, draggingNodeId, onDeleteEdge, showCriticalPath, theme]);
 
   React.useEffect(() => {
     setNodes(derivedNodes);
@@ -936,6 +956,14 @@ function CanvasInternal({
 
   return (
     <div className="absolute inset-0 z-0 bg-[#0e0e10]">
+      {nodes.length === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+          <div className="bg-neutral-900/40 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 flex flex-col items-center max-w-md text-center shadow-2xl pointer-events-auto">
+            <h2 className="text-xl font-semibold mb-2">Welcome to your Life Architecture</h2>
+            <p className="text-white/60 text-sm mb-6">Your canvas is completely blank. Click the <span className="text-primary font-mono bg-primary/10 px-1 py-0.5 rounded">[ + NEW STRATEGY ]</span> button at the top to map your first timeline.</p>
+          </div>
+        </div>
+      )}
       <ReactFlow
         nodes={nodes}
         edges={edges}

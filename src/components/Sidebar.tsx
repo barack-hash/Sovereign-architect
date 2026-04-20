@@ -16,15 +16,17 @@ import { cn } from '../lib/utils';
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  exportPath: () => void;
-  importPath: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onExport: () => void;
+  onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  theme: 'dark' | 'light';
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
   activeTab, 
   setActiveTab, 
-  exportPath, 
-  importPath 
+  onExport, 
+  onImport,
+  theme
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -38,7 +40,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside 
       className={cn(
-        "h-full shrink-0 bg-neutral-900/40 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl flex flex-col py-8 transition-all duration-300 ease-in-out z-40 overflow-hidden",
+        "h-full shrink-0 backdrop-blur-2xl border rounded-3xl shadow-2xl flex flex-col py-8 transition-all duration-300 ease-in-out z-40 overflow-hidden",
+        theme === 'light' ? "bg-white/60 border-red-900/20 shadow-red-900/5" : "bg-neutral-900/40 border-white/10",
         isCollapsed ? "w-20 items-center" : "w-64"
       )}
     >
@@ -96,7 +99,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )}>
         <div className="flex flex-col gap-2 mb-4 mx-2">
           <button 
-            onClick={exportPath}
+            onClick={onExport}
             className={cn(
               "flex items-center text-[10px] font-headline uppercase tracking-widest hover:bg-white/5 transition-all text-on-surface-variant hover:text-on-surface rounded-xl",
               isCollapsed ? "justify-center p-3" : "px-4 py-3 w-full"
@@ -115,7 +118,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             <TrendingUp size={14} className={cn(!isCollapsed && "mr-3")} /> 
             {!isCollapsed && "Import Path"}
-            <input type="file" accept=".json" onChange={importPath} className="hidden" />
+            <input type="file" accept=".json" className="hidden" onChange={onImport} />
           </label>
         </div>
         

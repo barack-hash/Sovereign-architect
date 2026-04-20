@@ -387,6 +387,7 @@ export default function App() {
     { id: '3', name: 'Utilities', amount: 200, frequency: 'monthly' },
     { id: '4', name: 'Transport', amount: 10, frequency: 'daily' },
   ]);
+  const [theme, setTheme] = useLocalStorage<'dark' | 'light'>('app-theme', 'dark');
 
   const [investmentYield, setInvestmentYield] = useLocalStorage('sovereign-yield', 7.2);
   
@@ -746,88 +747,42 @@ export default function App() {
     return () => window.removeEventListener('local-storage-update', handleUpdate);
   }, []);
 
-  const exportPath = () => {
+  const handleExport = () => {
     const payload = {
-      currentCash,
-      currentDebt,
-      baseMonthlyIncome,
-      goalName,
-      targetCapital,
-      targetTimeline,
-      healthRedline,
-      burnRateLedger,
-      investmentYield,
-      salahActive,
-      familyTime,
-      sleepTime,
-      commutingTime,
-      hygieneMealsTime,
-      skillStudyTime,
-      readingLearningTime,
-      fitnessGymTime,
-      socialMediaTime,
-      entertainmentTime,
-      stressTests,
       nodes: timelineEvents,
       edges: objectiveDependencies,
       systemConstraints,
-      conservativeHalal,
-      aggressiveHalal,
-      activePath,
-      conservativePathName,
-      aggressivePathName
+      timelineEvents,
     };
-    
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute("href", dataStr);
-    link.setAttribute("download", "sovereign-path.json");
+    link.href = url;
+    link.download = 'sovereign-architecture.json';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
-  const importPath = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
         const parsed = JSON.parse(event.target?.result as string);
-        
-        if (parsed.currentCash !== undefined) setCurrentCash(parsed.currentCash);
-        if (parsed.currentDebt !== undefined) setCurrentDebt(parsed.currentDebt);
-        if (parsed.baseMonthlyIncome !== undefined) setBaseMonthlyIncome(parsed.baseMonthlyIncome);
-        if (parsed.goalName !== undefined) setGoalName(parsed.goalName);
-        if (parsed.targetCapital !== undefined) setTargetCapital(parsed.targetCapital);
-        if (parsed.targetTimeline !== undefined) setTargetTimeline(parsed.targetTimeline);
-        if (parsed.healthRedline !== undefined) setHealthRedline(parsed.healthRedline);
-        if (parsed.burnRateLedger) setBurnRateLedger(parsed.burnRateLedger);
-        if (parsed.investmentYield !== undefined) setInvestmentYield(parsed.investmentYield);
-        if (parsed.salahActive !== undefined) setSalahActive(parsed.salahActive);
-        if (parsed.familyTime !== undefined) setFamilyTime(parsed.familyTime);
-        if (parsed.sleepTime !== undefined) setSleepTime(parsed.sleepTime);
-        if (parsed.commutingTime !== undefined) setCommutingTime(parsed.commutingTime);
-        if (parsed.hygieneMealsTime !== undefined) setHygieneMealsTime(parsed.hygieneMealsTime);
-        if (parsed.skillStudyTime !== undefined) setSkillStudyTime(parsed.skillStudyTime);
-        if (parsed.readingLearningTime !== undefined) setReadingLearningTime(parsed.readingLearningTime);
-        if (parsed.fitnessGymTime !== undefined) setFitnessGymTime(parsed.fitnessGymTime);
-        if (parsed.socialMediaTime !== undefined) setSocialMediaTime(parsed.socialMediaTime);
-        if (parsed.entertainmentTime !== undefined) setEntertainmentTime(parsed.entertainmentTime);
-        if (parsed.stressTests) setStressTests(parsed.stressTests);
-        
-        // Handle nodes/edges naming as requested
-        setTimelineEvents(parsed.nodes || parsed.timelineEvents || []);
-        setObjectiveDependencies(parsed.edges || parsed.objectiveDependencies || []);
-        setSystemConstraints(parsed.systemConstraints || parsed.uiConstraints || systemConstraints);
-        
-        if (parsed.conservativeHalal !== undefined) setConservativeHalal(parsed.conservativeHalal);
-        if (parsed.aggressiveHalal !== undefined) setAggressiveHalal(parsed.aggressiveHalal);
-        if (parsed.activePath !== undefined) setActivePath(parsed.activePath);
-        if (parsed.conservativePathName !== undefined) setConservativePathName(parsed.conservativePathName);
-        if (parsed.aggressivePathName !== undefined) setAggressivePathName(parsed.aggressivePathName);
-        
-        handleRecalculate();
+
+        if (parsed.nodes || parsed.timelineEvents) {
+          setTimelineEvents(parsed.nodes || parsed.timelineEvents || []);
+        }
+        if (parsed.edges || parsed.objectiveDependencies) {
+          setObjectiveDependencies(parsed.edges || parsed.objectiveDependencies || []);
+        }
+        if (parsed.systemConstraints || parsed.uiConstraints) {
+          setSystemConstraints(parsed.systemConstraints || parsed.uiConstraints || systemConstraints);
+        }
       } catch (err) {
         console.error("Failed to import path:", err);
       }
@@ -1545,6 +1500,12 @@ export default function App() {
   };
   const projectedNetWorth = currentData.Financial;
   const netChange = projectedNetWorth - initialNetWorth;
+  const glassPanelClass = theme === 'light'
+    ? 'bg-white/60 border-red-900/20 shadow-red-900/5'
+    : 'bg-neutral-900/40 border-white/10';
+  const glassPanelStrongClass = theme === 'light'
+    ? 'bg-white/60 border-red-900/20 shadow-red-900/5'
+    : 'bg-neutral-900/60 border-white/10';
   const monthlyNetChange = netChange / (targetTimeline || 1);
   const currentSystemHealth = initialSystemHealth; // For display
   const totalReclaimedTime = useMemo(() => timelineEvents
@@ -1745,10 +1706,13 @@ export default function App() {
           </div>
         </div>
       ) : (
-        <div className="relative h-screen w-screen bg-neutral-950 overflow-hidden font-sans text-white p-4 flex gap-4">
+        <div className={cn(
+          "relative h-screen w-screen overflow-hidden font-sans p-4 flex gap-4",
+          theme === 'light' ? 'bg-stone-100 text-stone-900' : 'bg-neutral-950 text-white'
+        )}>
       {chaosReport && (
         <div className="absolute top-24 right-8 z-[100] drop-shadow-2xl">
-          <div className="bg-neutral-900/60 backdrop-blur-2xl border border-white/10 p-6 max-w-md text-center shadow-2xl rounded-2xl">
+          <div className={cn("backdrop-blur-2xl border p-6 max-w-md text-center shadow-2xl rounded-2xl", glassPanelStrongClass)}>
             <h2 className="text-primary font-bold font-headline text-xl mb-4 tracking-widest">[ CHAOS REPORT ]</h2>
             <p className="text-white font-headline mb-8">{chaosReport}</p>
             <button onClick={() => setChaosReport(null)} className="border border-white/10 hover:border-primary/50 text-white hover:text-primary rounded-full px-6 py-2 font-headline font-bold tracking-widest hover:bg-primary/10 transition-colors">
@@ -1759,7 +1723,7 @@ export default function App() {
       )}
       {pathReport && (
         <div className="absolute top-24 right-8 z-[100] drop-shadow-2xl">
-          <div className="bg-neutral-900/60 backdrop-blur-2xl border border-white/10 p-6 max-w-md text-left shadow-2xl rounded-2xl">
+          <div className={cn("backdrop-blur-2xl border p-6 max-w-md text-left shadow-2xl rounded-2xl", glassPanelStrongClass)}>
             <h2 className="text-primary font-bold font-headline text-xl mb-4 tracking-widest">[ CRITICAL PATH ANALYSIS ]</h2>
             <div className="mb-6 border-l-2 border-primary/50 pl-4">
               <p className="text-white/70 font-headline text-sm uppercase tracking-widest">BOTTLENECK TARGET:</p>
@@ -1778,15 +1742,16 @@ export default function App() {
       <Sidebar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
-        exportPath={exportPath} 
-        importPath={importPath} 
+        onExport={handleExport} 
+        onImport={handleImport} 
+        theme={theme}
       />
 
       {/* Main Content Area */}
       <div className="flex-1 min-w-0 min-h-0 flex flex-col z-0 overflow-hidden">
         <div className="flex flex-col min-h-0 h-full">
           {/* Header */}
-            <header className="bg-neutral-900/40 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl px-6 py-3 flex justify-between items-center z-40 gap-4">
+            <header className={cn("backdrop-blur-2xl border rounded-2xl shadow-2xl px-6 py-3 flex justify-between items-center z-40 gap-4", glassPanelClass)}>
           <div className="flex items-center gap-4 flex-1 min-w-[300px]">
             <div className="flex items-center bg-white/5 px-4 py-2 rounded-xl border border-white/10 flex-1 max-w-80 group focus-within:border-primary/50 transition-all">
               <Search size={14} className="text-on-surface-variant group-focus-within:text-primary transition-colors" />
@@ -1810,7 +1775,13 @@ export default function App() {
 
           <div className="flex items-center gap-4 flex-wrap justify-end">
             <div className="hidden sm:flex items-center gap-2 px-4 py-1.5 bg-surface-container border border-outline-variant/10 rounded-sm">
-              <span className="text-[10px] font-headline tracking-tighter text-on-surface-variant uppercase">Burn Rate:</span>
+              <div className="relative group cursor-help flex items-center gap-1">
+                <span className="text-[10px] font-headline tracking-tighter text-on-surface-variant uppercase">Monthly Expenses:</span>
+                <span className="text-white/30 text-[10px] ml-1">(?)</span>
+                <div className="absolute hidden group-hover:block top-full mt-2 left-1/2 -translate-x-1/2 w-56 p-3 bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-xl text-xs text-white/80 text-center shadow-2xl z-50 pointer-events-none transition-all">
+                  Your total recurring monthly costs across all active operations.
+                </div>
+              </div>
               <span className={cn(
                 "text-[10px] font-mono font-bold transition-colors duration-300",
                 isRecalculating ? "text-primary" : "text-secondary"
@@ -1819,7 +1790,13 @@ export default function App() {
               </span>
             </div>
             <div className="hidden md:flex items-center gap-2 px-4 py-1.5 bg-surface-container border border-outline-variant/10 rounded-sm">
-              <span className="text-[10px] font-headline tracking-tighter text-on-surface-variant uppercase">Net Yield:</span>
+              <div className="relative group cursor-help flex items-center gap-1">
+                <span className="text-[10px] font-headline tracking-tighter text-on-surface-variant uppercase">Monthly Savings:</span>
+                <span className="text-white/30 text-[10px] ml-1">(?)</span>
+                <div className="absolute hidden group-hover:block top-full mt-2 left-1/2 -translate-x-1/2 w-56 p-3 bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-xl text-xs text-white/80 text-center shadow-2xl z-50 pointer-events-none transition-all">
+                  Your net positive cash flow after all expenses are deducted.
+                </div>
+              </div>
               <span className={cn(
                 "text-[10px] font-mono font-bold transition-colors duration-300",
                 isRecalculating ? "text-primary" : (netMonthlyYield < 0 ? "text-secondary animate-pulse" : "text-primary")
@@ -1830,9 +1807,15 @@ export default function App() {
 
             {/* What-If Yield Slider */}
             <div className="hidden lg:flex flex-col items-center justify-center border-l border-white/10 pl-4 ml-4">
-              <span className="text-[9px] font-mono text-primary/70 uppercase tracking-widest mb-1">
-                YIELD TWEAK: {((yieldMultiplier - 1) * 100).toFixed(0)}%
-              </span>
+              <div className="relative group cursor-help flex items-center gap-1">
+                <span className="text-[9px] font-mono text-primary/70 uppercase tracking-widest mb-1">
+                  SAVINGS TWEAK: {((yieldMultiplier - 1) * 100).toFixed(0)}%
+                </span>
+                <span className="text-white/30 text-[10px] ml-1">(?)</span>
+                <div className="absolute hidden group-hover:block top-full mt-2 left-1/2 -translate-x-1/2 w-56 p-3 bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-xl text-xs text-white/80 text-center shadow-2xl z-50 pointer-events-none transition-all">
+                  Simulate saving extra money each month to see how it speeds up your timeline.
+                </div>
+              </div>
               <input 
                 type="range" 
                 min="0.5" 
@@ -1905,11 +1888,27 @@ export default function App() {
                 {appState === 'PLANNING' ? "[ EXECUTE ]" : "[ ABORT PROTOCOL ]"}
               </button>
               <button onClick={handleLock} className="px-5 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold tracking-wide backdrop-blur-md transition-all text-red-500 ml-4">[ LOCK TERMINAL ]</button>
-              <button 
-                onClick={() => setIsGhostMode(!isGhostMode)} 
-                className={`px-5 py-2 rounded-full border border-white/10 text-xs font-semibold tracking-wide backdrop-blur-md transition-all ml-4 ${isGhostMode ? 'text-purple-500 bg-purple-500/10 border-purple-500/50' : 'text-white/50 bg-white/5 hover:bg-white/10'}`}
+              <div className="relative group cursor-help flex items-center gap-1">
+                <button 
+                  onClick={() => setIsGhostMode(!isGhostMode)} 
+                  className={`px-5 py-2 rounded-full border border-white/10 text-xs font-semibold tracking-wide backdrop-blur-md transition-all ml-4 ${isGhostMode ? 'text-purple-500 bg-purple-500/10 border-purple-500/50' : 'text-white/50 bg-white/5 hover:bg-white/10'}`}
+                >
+                  {isGhostMode ? '[ SCENARIO PLANNER: ON ]' : '[ SCENARIO PLANNER: OFF ]'}
+                </button>
+                <div className="absolute hidden group-hover:block top-full mt-2 left-1/2 -translate-x-1/2 w-56 p-3 bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-xl text-xs text-white/80 text-center shadow-2xl z-50 pointer-events-none transition-all">
+                  Isolate a parallel timeline to test risky decisions without affecting your main path.
+                </div>
+              </div>
+              <button
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className={cn(
+                  "px-5 py-2 rounded-full border text-xs font-semibold tracking-wide backdrop-blur-md transition-all ml-2",
+                  theme === 'light'
+                    ? "bg-white/60 border-red-900/20 shadow-red-900/5 text-red-900 hover:bg-white/80"
+                    : "bg-white/5 hover:bg-white/10 border-white/10 text-white/80"
+                )}
               >
-                {isGhostMode ? '[ GHOST MODE: ON ]' : '[ GHOST MODE: OFF ]'}
+                [ THEME: {theme.toUpperCase()} ]
               </button>
             </div>
             <div className="flex gap-4 ml-2 border-l border-outline-variant/20 pl-6">
@@ -1923,7 +1922,7 @@ export default function App() {
 
         {/* Tabbed Navigation */}
         {activeTab === 'Path Simulations' && (
-          <div className="mt-4 self-start z-40 flex bg-neutral-900/40 backdrop-blur-2xl border border-white/10 rounded-full px-2 py-1 shadow-2xl">
+          <div className={cn("mt-4 self-start z-40 flex backdrop-blur-2xl border rounded-full px-2 py-1 shadow-2xl", glassPanelClass)}>
             <button 
               onClick={() => setViewMode('terminal')}
               className={cn(
@@ -2970,7 +2969,7 @@ export default function App() {
                 <div className="space-y-3">
                   <div className="p-3 bg-surface-container border border-outline-variant/10 rounded-sm space-y-2">
                     <div className="flex justify-between items-center">
-                      <span className="text-[9px] font-headline uppercase text-on-surface-variant">Total Burn Rate</span>
+                      <span className="text-[9px] font-headline uppercase text-on-surface-variant">Total Monthly Expenses</span>
                       <span className="text-[10px] font-mono font-bold text-secondary">{formatCurrency(totalMonthlyBurnRate)}/MO</span>
                     </div>
                     <div className="flex justify-between items-center">
@@ -3347,20 +3346,21 @@ export default function App() {
           onTidyGrid={handleTidyGrid}
           onLogCompleted={handleLogCompleted}
           onTraceCriticalPath={traceCriticalPath}
+          theme={theme}
         />
         )}
       </div>
 
       {/* Bottom Ticker */}
-        <footer className="mt-4 h-10 bg-neutral-900/40 backdrop-blur-2xl border border-white/10 rounded-full flex items-center overflow-hidden z-20 shadow-2xl">
+        <footer className={cn("mt-4 h-10 backdrop-blur-2xl border rounded-full flex items-center overflow-hidden z-20 shadow-2xl", glassPanelClass)}>
           <div className="flex items-center gap-12 px-6 whitespace-nowrap animate-marquee">
             {[
               { label: 'NET WORTH', value: formatCurrency(projectedNetWorth), color: 'text-primary' },
               { label: 'VARIANCE', value: `${((netChange / (initialNetWorth || 1)) * 100).toFixed(2)}%`, color: netChange > 0 ? 'text-primary' : 'text-secondary' },
               { label: 'SYSTEM_STATUS', value: (simulationData[currentSimulationMonth]?.violations?.length > 0) ? 'BREACH DETECTED' : 'OPTIMAL', color: (simulationData[currentSimulationMonth]?.violations?.length > 0) ? 'text-[#ef4444]' : 'text-primary' },
               { label: 'PATH_ALIGNMENT', value: `${(currentData.Emotional * 0.942).toFixed(1)}%`, color: 'text-primary' },
-              { label: 'BURN_RATE', value: `${formatCurrency(totalMonthlyBurnRate)}/MO`, color: 'text-secondary' },
-              { label: 'NET_YIELD', value: `${formatCurrency(netMonthlyYield)}/MO`, color: netMonthlyYield < 0 ? 'text-secondary' : 'text-primary' },
+              { label: 'MONTHLY_EXPENSES', value: `${formatCurrency(totalMonthlyBurnRate)}/MO`, color: 'text-secondary' },
+              { label: 'MONTHLY_SAVINGS', value: `${formatCurrency(netMonthlyYield)}/MO`, color: netMonthlyYield < 0 ? 'text-secondary' : 'text-primary' },
             ].map((item, i) => (
               <div key={i} className="flex items-center gap-3">
                 <span className="text-[8px] font-headline uppercase text-on-surface-variant tracking-widest">{item.label}:</span>
@@ -3373,8 +3373,8 @@ export default function App() {
               { label: 'VARIANCE', value: `${((netChange / (initialNetWorth || 1)) * 100).toFixed(2)}%`, color: netChange > 0 ? 'text-primary' : 'text-secondary' },
               { label: 'SYSTEM_STATUS', value: (simulationData[currentSimulationMonth]?.violations?.length > 0) ? 'BREACH DETECTED' : 'OPTIMAL', color: (simulationData[currentSimulationMonth]?.violations?.length > 0) ? 'text-[#ef4444]' : 'text-primary' },
               { label: 'PATH_ALIGNMENT', value: `${(currentData.Emotional * 0.942).toFixed(1)}%`, color: 'text-primary' },
-              { label: 'BURN_RATE', value: `${formatCurrency(totalMonthlyBurnRate)}/MO`, color: 'text-secondary' },
-              { label: 'NET_YIELD', value: `${formatCurrency(netMonthlyYield)}/MO`, color: netMonthlyYield < 0 ? 'text-secondary' : 'text-primary' },
+              { label: 'MONTHLY_EXPENSES', value: `${formatCurrency(totalMonthlyBurnRate)}/MO`, color: 'text-secondary' },
+              { label: 'MONTHLY_SAVINGS', value: `${formatCurrency(netMonthlyYield)}/MO`, color: netMonthlyYield < 0 ? 'text-secondary' : 'text-primary' },
             ].map((item, i) => (
               <div key={`dup-${i}`} className="flex items-center gap-3">
                 <span className="text-[8px] font-headline uppercase text-on-surface-variant tracking-widest">{item.label}:</span>

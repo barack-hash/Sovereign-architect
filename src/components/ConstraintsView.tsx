@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Shield, Clock, BookOpen, Users } from 'lucide-react';
 
 interface ConstraintsViewProps {
@@ -16,15 +16,28 @@ interface ConstraintsViewProps {
 }
 
 const ConstraintsView: React.FC<ConstraintsViewProps> = ({ systemConstraints, setSystemConstraints }) => {
+  const [openSection, setOpenSection] = useState<string | null>(null);
+
+  const toggleSection = (section: string) => {
+    setOpenSection(prev => (prev === section ? null : section));
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
-      {/* Panel 1: Financial Redlines */}
+      {/* Panel 1: Safety Nets */}
       <div className="bg-surface-lowest border border-emerald-900/30 p-6 rounded-lg shadow-lg">
-        <div className="flex items-center gap-3 mb-6 text-emerald-500">
-          <Shield className="w-6 h-6" />
-          <h2 className="text-lg font-headline font-bold uppercase tracking-widest">Financial Redlines</h2>
-        </div>
-        <div className="space-y-4">
+        <button
+          onClick={() => toggleSection('safety')}
+          className="w-full flex items-center justify-between gap-3 mb-6 bg-white/5 hover:bg-white/10 rounded-xl p-3 transition-colors"
+        >
+          <div className="flex items-center gap-3 text-emerald-500">
+            <Shield className="w-6 h-6" />
+            <h2 className="text-lg font-headline font-bold uppercase tracking-widest">Safety Nets</h2>
+          </div>
+          <span className="text-emerald-500 text-lg font-bold">{openSection === 'safety' ? '-' : '+'}</span>
+        </button>
+        {openSection === 'safety' ? (
+        <div className="space-y-4 transition-all duration-300">
           <div>
             <label className="block text-xs font-headline text-on-surface-variant mb-2">Emergency Fund Floor ($)</label>
             <input
@@ -44,15 +57,23 @@ const ConstraintsView: React.FC<ConstraintsViewProps> = ({ systemConstraints, se
             />
           </div>
         </div>
+        ) : null}
       </div>
 
       {/* Panel 2: Temporal / Time */}
       <div className="bg-surface-lowest border border-cyan-900/30 p-6 rounded-lg shadow-lg">
-        <div className="flex items-center gap-3 mb-6 text-cyan-500">
-          <Clock className="w-6 h-6" />
-          <h2 className="text-lg font-headline font-bold uppercase tracking-widest">Temporal / Time</h2>
-        </div>
-        <div className="space-y-4">
+        <button
+          onClick={() => toggleSection('temporal')}
+          className="w-full flex items-center justify-between gap-3 mb-6 bg-white/5 hover:bg-white/10 rounded-xl p-3 transition-colors"
+        >
+          <div className="flex items-center gap-3 text-cyan-500">
+            <Clock className="w-6 h-6" />
+            <h2 className="text-lg font-headline font-bold uppercase tracking-widest">Temporal / Time</h2>
+          </div>
+          <span className="text-cyan-500 text-lg font-bold">{openSection === 'temporal' ? '-' : '+'}</span>
+        </button>
+        {openSection === 'temporal' ? (
+        <div className="space-y-4 transition-all duration-300">
           <div>
             <label className="block text-xs font-headline text-on-surface-variant mb-2">Absolute Min Sleep (Hrs/day)</label>
             <input
@@ -72,15 +93,23 @@ const ConstraintsView: React.FC<ConstraintsViewProps> = ({ systemConstraints, se
             />
           </div>
         </div>
+        ) : null}
       </div>
 
       {/* Panel 3: Spiritual / Religion */}
       <div className="bg-surface-lowest border border-purple-900/30 p-6 rounded-lg shadow-lg">
-        <div className="flex items-center gap-3 mb-6 text-purple-500">
-          <BookOpen className="w-6 h-6" />
-          <h2 className="text-lg font-headline font-bold uppercase tracking-widest">Spiritual / Religion</h2>
-        </div>
-        <div className="space-y-4">
+        <button
+          onClick={() => toggleSection('spiritual')}
+          className="w-full flex items-center justify-between gap-3 mb-6 bg-white/5 hover:bg-white/10 rounded-xl p-3 transition-colors"
+        >
+          <div className="flex items-center gap-3 text-purple-500">
+            <BookOpen className="w-6 h-6" />
+            <h2 className="text-lg font-headline font-bold uppercase tracking-widest">Spiritual / Religion</h2>
+          </div>
+          <span className="text-purple-500 text-lg font-bold">{openSection === 'spiritual' ? '-' : '+'}</span>
+        </button>
+        {openSection === 'spiritual' ? (
+        <div className="space-y-4 transition-all duration-300">
           <div>
             <label className="block text-xs font-headline text-on-surface-variant mb-2">Daily Prayer / Salah Strictness (Non-Negotiable)</label>
             <div className="flex items-center mt-2">
@@ -103,15 +132,23 @@ const ConstraintsView: React.FC<ConstraintsViewProps> = ({ systemConstraints, se
             />
           </div>
         </div>
+        ) : null}
       </div>
 
       {/* Panel 4: Relational & Network */}
       <div className="bg-surface-lowest border border-blue-900/30 p-6 rounded-lg shadow-lg">
-        <div className="flex items-center gap-3 mb-6 text-blue-500">
-          <Users className="w-6 h-6" />
-          <h2 className="text-lg font-headline font-bold uppercase tracking-widest">Relational & Network</h2>
-        </div>
-        <div className="space-y-4">
+        <button
+          onClick={() => toggleSection('relational')}
+          className="w-full flex items-center justify-between gap-3 mb-6 bg-white/5 hover:bg-white/10 rounded-xl p-3 transition-colors"
+        >
+          <div className="flex items-center gap-3 text-blue-500">
+            <Users className="w-6 h-6" />
+            <h2 className="text-lg font-headline font-bold uppercase tracking-widest">Relational & Network</h2>
+          </div>
+          <span className="text-blue-500 text-lg font-bold">{openSection === 'relational' ? '-' : '+'}</span>
+        </button>
+        {openSection === 'relational' ? (
+        <div className="space-y-4 transition-all duration-300">
           <div>
             <label className="block text-xs font-headline text-on-surface-variant mb-2">Min Family Time (Hrs/week)</label>
             <input
@@ -131,6 +168,7 @@ const ConstraintsView: React.FC<ConstraintsViewProps> = ({ systemConstraints, se
             />
           </div>
         </div>
+        ) : null}
       </div>
     </div>
   );
