@@ -1313,21 +1313,31 @@ function CanvasInternal({
           </svg>
         )}
 
-        <Controls className="bg-surface border border-outline-variant/20 fill-on-surface" />
-        <Panel position="bottom-right" className="!m-0 z-40 mb-24 mr-4">
-          <div className="relative h-36 w-36 overflow-hidden rounded-full border border-white/15 bg-neutral-950/90 shadow-[0_0_28px_rgba(0,0,0,0.5)] backdrop-blur-md">
-            <div className="pointer-events-none absolute inset-0 z-10 rounded-full border border-emerald-500/20 shadow-[inset_0_0_20px_rgba(74,222,128,0.08)]" />
+        <Controls
+          position="top-left"
+          className="bg-surface border border-outline-variant/20 fill-on-surface"
+        />
+        <Panel
+          position="bottom-left"
+          className="pointer-events-auto !m-0 z-30 !bottom-24 !left-6 flex flex-col items-center"
+        >
+          <div className="relative h-[128px] w-[128px] max-h-[150px] max-w-[150px] overflow-hidden rounded-full border border-white/15 bg-[rgba(0,0,0,0.5)] shadow-[0_0_24px_rgba(0,0,0,0.45)] backdrop-blur-md">
+            <div className="pointer-events-none absolute inset-0 z-10 rounded-full border border-emerald-500/20 shadow-[inset_0_0_16px_rgba(74,222,128,0.06)]" />
             <MiniMap
-              className="!bg-transparent [&_.react-flow\_\_minimap-mask]:fill-black/65"
+              className="!bg-transparent [&_.react-flow\_\_minimap]:!bg-transparent [&_.react-flow\_\_minimap-mask]:fill-black/60"
               style={{ width: '100%', height: '100%' }}
               nodeColor={(n) => {
-                if (n.type === 'genesis') return '#4be277';
                 if ((n.data as any)?.status === 'critical') return '#f27d26';
+                if (n.type === 'genesis') return '#4be277';
+                if (n.type === 'objective') return '#3b82f6';
+                if (n.type === 'event') return '#4be277';
+                if (n.type === 'note') return '#eab308';
                 return '#94a3b8';
               }}
-              maskColor="rgba(14, 14, 16, 0.72)"
+              maskColor="rgba(14, 14, 16, 0.65)"
               pannable
               zoomable
+              aria-label="Canvas radar minimap"
             />
             <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary shadow-[0_0_8px_#4be277]" />
           </div>
@@ -1386,14 +1396,14 @@ function CanvasInternal({
 
       {/* FAB: Add Event */}
       {appState === 'PLANNING' && (
-        <div className="absolute bottom-20 right-8 z-40 flex flex-col items-end gap-4">
+        <div className="pointer-events-none absolute bottom-20 right-8 z-40 flex flex-col items-end gap-4">
           <AnimatePresence>
             {isAddMenuOpen && (
               <motion.div
                 initial={{ opacity: 0, y: 20, scale: 0.9 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 20, scale: 0.9 }}
-                className="flex flex-col gap-2 backdrop-blur-md border-[0.5px] border-white/5 rounded-2xl p-2 shadow-[0_20px_80px_rgba(0,0,0,0.08)] bg-neutral-900/40"
+                className="pointer-events-auto flex flex-col gap-2 backdrop-blur-md border-[0.5px] border-white/5 rounded-2xl p-2 shadow-[0_20px_80px_rgba(0,0,0,0.08)] bg-neutral-900/40"
               >
                 <button
                   onClick={() => handleAddSpecificNode('genesis')}
@@ -1423,10 +1433,14 @@ function CanvasInternal({
             )}
           </AnimatePresence>
           <button 
+            type="button"
             onClick={handleAddNode}
             className={cn(
-              "w-12 h-12 bg-primary text-black rounded-xl shadow-[0_20px_80px_rgba(0,0,0,0.08)] flex items-center justify-center hover:scale-105 transition-transform group",
-              isAddMenuOpen && "rotate-45 bg-neutral-900/40 backdrop-blur-md border-[0.5px] border-white/5 text-primary"
+              'pointer-events-auto relative z-40 w-12 h-12 bg-primary text-black rounded-xl shadow-[0_20px_80px_rgba(0,0,0,0.08)] flex items-center justify-center hover:scale-105 transition-transform group',
+              isAddMenuOpen && 'rotate-45 bg-neutral-900/40 backdrop-blur-md border-[0.5px] border-white/5 text-primary',
+              systemIdle &&
+                !isAddMenuOpen &&
+                'motion-safe:shadow-[0_0_22px_rgba(74,222,128,0.45)] motion-safe:animate-[pulse_2.8s_ease-in-out_infinite]'
             )}
           >
             <Plus size={24} />

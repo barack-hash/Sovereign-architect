@@ -20,6 +20,7 @@ interface SidebarProps {
   onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onLoadTemplate?: (id: 'aviation' | 'travel') => void;
   onOpenResetModal?: () => void;
+  onOpenCommanderDossier?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
@@ -29,6 +30,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onImport,
   onLoadTemplate,
   onOpenResetModal,
+  onOpenCommanderDossier,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(true);
 
@@ -187,20 +189,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {!isCollapsed && "Support"}
         </button>
         
-        <div className={cn(
-          "mt-5 p-2.5 bg-surface-container rounded-lg flex items-center gap-3 border border-white/5",
-          isCollapsed && "p-1 justify-center"
-        )}>
+        <button
+          type="button"
+          onClick={() => onOpenCommanderDossier?.()}
+          disabled={!onOpenCommanderDossier}
+          title={isCollapsed ? 'Commander dossier' : undefined}
+          className={cn(
+            'mt-5 w-full rounded-lg p-2.5 bg-surface-container flex items-center gap-3 border border-white/5 text-left transition-all',
+            onOpenCommanderDossier && 'hover:border-emerald-500/30 hover:bg-white/[0.04] cursor-pointer',
+            !onOpenCommanderDossier && 'opacity-80 cursor-default',
+            isCollapsed && 'p-1 justify-center'
+          )}
+        >
           <div className="w-10 h-10 bg-surface-highest rounded-sm flex items-center justify-center text-on-surface-variant shrink-0">
             <User size={20} />
           </div>
           {!isCollapsed && (
-            <div className="overflow-hidden">
+            <div className="overflow-hidden min-w-0">
               <p className="text-xs font-bold truncate">ANALYST_01</p>
               <p className="text-[10px] text-primary truncate">Active Session</p>
             </div>
           )}
-        </div>
+        </button>
 
         {onOpenResetModal && (
           <button

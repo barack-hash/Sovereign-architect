@@ -50,6 +50,7 @@ import ConstraintsView from './components/ConstraintsView';
 import DailyLogView from './components/DailyLogView';
 import { GoalsView } from './components/GoalsView';
 import { Sidebar } from './components/Sidebar';
+import { CommanderDossierModal } from './components/CommanderDossierModal';
 import { SettingsView } from './components/SettingsView';
 import { SupportView } from './components/SupportView';
 import { useLocalStorage } from './hooks/useLocalStorage';
@@ -395,6 +396,7 @@ export default function App() {
 
   const [isGhostMode, setIsGhostMode] = useState(false);
   const [resetMemoryModalOpen, setResetMemoryModalOpen] = useState(false);
+  const [commanderDossierOpen, setCommanderDossierOpen] = useState(false);
 
   const [conservativePathName, setConservativePathName] = useLocalStorage('sovereign-conservative-name', 'Conservative');
   const [aggressivePathName, setAggressivePathName] = useLocalStorage('sovereign-aggressive-name', 'Aggressive');
@@ -2014,6 +2016,76 @@ export default function App() {
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
 
+  const pathFullyVerified = useMemo(
+    () =>
+      !simulationData.some(
+        (d) =>
+          d.isCrisis === true ||
+          (Array.isArray(d.violations) && d.violations.length > 0) ||
+          (typeof d.Financial === 'number' && d.Financial < 0)
+      ),
+    [simulationData]
+  );
+
+  const dossierStrategicMomentumPct = useMemo(() => {
+    const row = simulationData[targetTimeline] as { objectiveProgress?: Record<string, number> } | undefined;
+    const prog = row?.objectiveProgress;
+    if (prog && Object.keys(prog).length > 0) {
+      const vals = Object.values(prog);
+      return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+    }
+    return Math.round(successProbability);
+  }, [simulationData, targetTimeline, successProbability]);
+
+  const commanderDossierStateOfUnion = useMemo(() => {
+    const liquidityOk =
+      !criticalAlert &&
+      !canvasCrisisActive &&
+      (typeof simAtCurrentMonth?.Financial !== 'number' || (simAtCurrentMonth.Financial as number) >= 0);
+    const liquidity = liquidityOk
+      ? 'Liquidity Status: NOMINAL'
+      : 'Liquidity Status: ELEVATED — REVIEW CONSTRAINTS / SIMULATION';
+
+    const netsActive = activeStressTestsCount === 0 && liquidityOk;
+    const risk = netsActive
+      ? 'Risk Factor: LOW (Safety Nets Active)'
+      : activeStressTestsCount > 0
+        ? `Risk Factor: MODERATE (${activeStressTestsCount} stress test(s) armed)`
+        : 'Risk Factor: HIGH — MITIGATE BREACHES';
+
+    const momentum = `Strategic Momentum: ${dossierStrategicMomentumPct}% (Objective Aligned)`;
+
+    return { liquidity, risk, momentum };
+  }, [
+    criticalAlert,
+    canvasCrisisActive,
+    simAtCurrentMonth,
+    activeStressTestsCount,
+    dossierStrategicMomentumPct,
+  ]);
+
+  const commanderDossierStats = useMemo(() => {
+    const fmt = (n: number) =>
+      new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
+    const education = `${skillStudyTime}h skill + ${readingLearningTime}h reading / day`;
+    const projectedExit =
+      monthsToTarget >= 0
+        ? `Est. ${monthsToTarget} mo → ${goalName || 'objective'} (horizon ${targetTimeline} mo)`
+        : 'Recalibrate trajectory — exit window indeterminate';
+    return {
+      education,
+      netWorth: fmt(projectedNetWorth),
+      projectedExit,
+    };
+  }, [
+    skillStudyTime,
+    readingLearningTime,
+    monthsToTarget,
+    goalName,
+    targetTimeline,
+    projectedNetWorth,
+  ]);
+
   return (
     <>
       {!isUnlocked ? (
@@ -2156,6 +2228,14 @@ export default function App() {
           </div>
         </div>
       )}
+      <CommanderDossierModal
+        open={commanderDossierOpen}
+        onClose={() => setCommanderDossierOpen(false)}
+        timelineEvents={timelineEvents}
+        stats={commanderDossierStats}
+        stateOfUnion={commanderDossierStateOfUnion}
+        pathFullyVerified={pathFullyVerified}
+      />
       {resetMemoryModalOpen && (
         <div
           className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
@@ -2243,6 +2323,7 @@ export default function App() {
           onImport={handleImport}
           onLoadTemplate={applyStarterTemplate}
           onOpenResetModal={() => setResetMemoryModalOpen(true)}
+          onOpenCommanderDossier={() => setCommanderDossierOpen(true)}
         />
       </div>
 
