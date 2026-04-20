@@ -2317,7 +2317,12 @@ export default function App() {
               <div className="relative max-w-2xl w-full max-h-[calc(100vh-2rem)] bg-neutral-900/80 border-[0.5px] border-white/10 rounded-3xl shadow-2xl backdrop-blur-md overflow-hidden">
                 <button onClick={() => setActiveTab('Path Simulations')} className="absolute top-4 right-4 text-red-600 font-mono text-sm">[ X ]</button>
                 <div className="p-8 h-full max-h-[calc(100vh-2rem)] overflow-y-auto">
-                  <GoalsView objectives={objectives} simulationData={simulationData} currentSimMonth={currentSimulationMonth} />
+                  <GoalsView
+                    objectives={objectives}
+                    simulationData={simulationData}
+                    currentSimMonth={currentSimulationMonth}
+                    timelineEvents={timelineEvents}
+                  />
                 </div>
               </div>
             </div>

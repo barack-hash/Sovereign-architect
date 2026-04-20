@@ -89,3 +89,46 @@
   animation: ghost-border-pulse 2.2s ease-in-out infinite;
 }
 
+/* Goals / Mission Profiles: pulse indicators */
+@keyframes mission-emerald-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 10px rgba(16, 185, 129, 0.45),
+      0 0 18px rgba(52, 211, 153, 0.2);
+    background-color: rgba(52, 211, 153, 0.95);
+  }
+  50% {
+    box-shadow:
+      0 0 16px rgba(16, 185, 129, 0.65),
+      0 0 28px rgba(52, 211, 153, 0.35);
+    background-color: rgba(16, 185, 129, 1);
+  }
+}
+
+@keyframes mission-blood-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 12px rgba(220, 38, 38, 0.55),
+      0 0 20px rgba(185, 28, 28, 0.25);
+    background-color: rgba(248, 113, 113, 0.95);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow:
+      0 0 20px rgba(220, 38, 38, 0.75),
+      0 0 32px rgba(127, 29, 29, 0.35);
+    background-color: rgba(220, 38, 38, 1);
+    transform: scale(1.08);
+  }
+}
+
+.mission-pulse-on-track {
+  animation: mission-emerald-glow 2.4s ease-in-out infinite;
+}
+
+.mission-pulse-fail {
+  animation: mission-blood-pulse 1.15s ease-in-out infinite;
+}
+
