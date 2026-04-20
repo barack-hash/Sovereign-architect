@@ -1215,7 +1215,7 @@ function CanvasInternal({
   return (
     <div
       className={cn(
-        'absolute inset-0 z-0 bg-neutral-950',
+        'pointer-events-auto absolute inset-0 z-0 bg-neutral-950',
         selectedNodeId && 'canvas-focus-mode'
       )}
     >
@@ -1245,7 +1245,7 @@ function CanvasInternal({
         </div>
       )}
       <ReactFlow
-        className="relative z-[2] !bg-transparent"
+        className="pointer-events-auto relative z-[2] !bg-transparent"
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
@@ -1260,6 +1260,9 @@ function CanvasInternal({
         onNodeDragStop={onNodeDragStopInternal}
         isValidConnection={isValidConnection}
         colorMode="dark"
+        panOnScroll={false}
+        panOnDrag={true}
+        zoomOnPinch={true}
         nodesDraggable={appState === 'PLANNING'}
         nodesConnectable={appState === 'PLANNING'}
         elementsSelectable={true}
@@ -1319,7 +1322,7 @@ function CanvasInternal({
         />
         <Panel
           position="bottom-left"
-          className="pointer-events-auto !m-0 z-30 !bottom-24 !left-6 flex flex-col items-center"
+          className="pointer-events-auto !m-0 z-40 !bottom-24 !left-24 flex flex-col items-center"
         >
           <div className="relative h-[128px] w-[128px] max-h-[150px] max-w-[150px] overflow-hidden rounded-full border border-white/15 bg-[rgba(0,0,0,0.5)] shadow-[0_0_24px_rgba(0,0,0,0.45)] backdrop-blur-md">
             <div className="pointer-events-none absolute inset-0 z-10 rounded-full border border-emerald-500/20 shadow-[inset_0_0_16px_rgba(74,222,128,0.06)]" />

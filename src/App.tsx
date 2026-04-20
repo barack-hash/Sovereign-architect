@@ -2328,7 +2328,7 @@ export default function App() {
       </div>
 
       {/* Main Content Area */}
-      <div className="absolute inset-0 min-w-0 min-h-0 flex flex-col z-0 overflow-hidden">
+      <div className="pointer-events-auto absolute inset-0 min-w-0 min-h-0 flex flex-col z-0 overflow-hidden">
         <div className="flex flex-col min-h-0 h-full">
           {/* Header */}
           {!isModalView && (
@@ -2344,8 +2344,10 @@ export default function App() {
                   <span className="font-mono font-bold text-red-600">
                     {formatCurrency(liveMonthlyExpenses)}
                   </span>
-                  <div className="pointer-events-none invisible absolute left-0 top-full z-[60] mt-1 w-max max-w-[240px] rounded-md border-[0.5px] border-outline-variant/30 bg-neutral-950/95 px-2.5 py-1.5 text-[8px] font-headline font-normal normal-case leading-snug tracking-normal text-stone-300 opacity-0 shadow-lg backdrop-blur-md transition-opacity group-hover/mexp:visible group-hover/mexp:opacity-100">
-                    Sum of all active Event and Objective costs.
+                  <div className="pointer-events-none invisible absolute left-0 top-full z-[60] w-max max-w-[240px] pt-1 opacity-0 shadow-lg transition-opacity group-hover/mexp:visible group-hover/mexp:opacity-100">
+                    <div className="rounded-md border-[0.5px] border-outline-variant/30 bg-neutral-950/95 px-2.5 py-1.5 text-[8px] font-headline font-normal normal-case leading-snug tracking-normal text-stone-300 backdrop-blur-md">
+                      Sum of all active Event and Objective costs.
+                    </div>
                   </div>
                 </div>
                 <div className="w-px h-3 bg-white/10" />
@@ -2377,12 +2379,15 @@ export default function App() {
                       formatCurrency(liveMonthlySavings)
                     )}
                   </span>
-                  <div className="pointer-events-none invisible absolute right-0 top-full z-[60] mt-1 w-max max-w-[240px] rounded-md border-[0.5px] border-outline-variant/30 bg-neutral-950/95 px-2.5 py-1.5 text-[8px] font-headline font-normal normal-case leading-snug tracking-normal text-stone-300 opacity-0 shadow-lg backdrop-blur-md transition-opacity group-hover/msav:visible group-hover/msav:opacity-100">
-                    Calculated Yield - Total Burn Rate.
+                  <div className="pointer-events-none invisible absolute right-0 top-full z-[60] w-max max-w-[240px] pt-1 opacity-0 shadow-lg transition-opacity group-hover/msav:visible group-hover/msav:opacity-100">
+                    <div className="rounded-md border-[0.5px] border-outline-variant/30 bg-neutral-950/95 px-2.5 py-1.5 text-[8px] font-headline font-normal normal-case leading-snug tracking-normal text-stone-300 backdrop-blur-md">
+                      Calculated Yield - Total Burn Rate.
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="pointer-events-none invisible absolute left-1/2 top-full z-50 mt-2 flex min-w-max max-w-[min(92vw,720px)] -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-2xl border-[0.5px] border-white/5 bg-neutral-900/95 px-3 py-2 opacity-0 shadow-2xl backdrop-blur-md transition-all duration-200 group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100">
+              <div className="pointer-events-none invisible absolute left-1/2 top-full z-50 w-max max-w-[min(92vw,720px)] -translate-x-1/2 pt-2 opacity-0 shadow-2xl transition-all duration-200 group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100">
+                <div className="flex min-w-max max-w-[min(92vw,720px)] flex-wrap items-center justify-center gap-2 rounded-2xl border-[0.5px] border-white/5 bg-neutral-900/95 px-3 py-2 backdrop-blur-md">
                 <button 
                   onClick={handleResetStrategy}
                   className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border-[0.5px] border-white/5 text-[10px] font-semibold tracking-[0.16em] uppercase backdrop-blur-md transition-all text-emerald-500"
@@ -2436,6 +2441,7 @@ export default function App() {
                   >
                     Canvas
                   </button>
+                </div>
                 </div>
               </div>
             </header>
@@ -4047,14 +4053,15 @@ export default function App() {
             })()}
         </footer>
         )}
-        <div className="fixed bottom-6 left-6 z-50 group">
+        <div className="fixed bottom-20 right-28 z-50 group">
           <button
+            type="button"
             aria-label="Open visual legend"
             className="w-8 h-8 rounded-full bg-neutral-900/70 backdrop-blur-md border border-white/10 text-stone-200 text-xs font-mono font-bold flex items-center justify-center"
           >
             ?
           </button>
-          <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute bottom-10 left-0 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border-[0.5px] border-outline-variant/30 bg-neutral-950/90 p-4 text-stone-100 shadow-2xl backdrop-blur-xl">
+          <div className="pointer-events-none opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 absolute bottom-10 right-0 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border-[0.5px] border-outline-variant/30 bg-neutral-950/90 p-4 text-stone-100 shadow-2xl backdrop-blur-xl">
             <h4 className="text-[10px] tracking-[0.18em] uppercase text-stone-200 mb-3">Legend</h4>
             <div className="space-y-3 text-[11px] leading-snug">
               <div>

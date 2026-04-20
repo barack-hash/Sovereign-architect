@@ -101,12 +101,12 @@ const DailyLogView: React.FC<DailyLogViewProps> = ({
   return (
     <div
       className={cn(
-        'font-terminal crt-terminal-scanlines flex-1 w-full max-w-6xl mx-auto flex flex-col h-full bg-surface-lowest overflow-y-auto terminal-scroll relative'
+        'font-terminal crt-terminal-scanlines flex-1 w-full max-w-none px-12 flex flex-col h-full bg-surface-lowest overflow-y-auto terminal-scroll relative'
       )}
     >
       <div
         className={cn(
-          'sticky top-0 z-20 font-terminal bg-surface-lowest/95 backdrop-blur-md border-b pb-4 mb-6 transition-colors px-8 pt-8',
+          'sticky top-0 z-20 font-terminal bg-surface-lowest/95 backdrop-blur-md border-b pb-4 mb-6 transition-colors px-12 pt-8',
           savingsBelowBuffer
             ? 'border-b-red-600/40 ring-1 ring-red-600/25 border-outline-variant/20'
             : 'border-outline-variant/20'
@@ -173,7 +173,7 @@ const DailyLogView: React.FC<DailyLogViewProps> = ({
         </div>
       </div>
 
-      <div className="px-8 pb-8 flex-1 flex flex-col gap-10">
+      <div className="px-12 pb-8 flex-1 flex flex-col gap-10">
         <section>
           <div className="text-[10px] uppercase tracking-[0.28em] text-on-surface-variant mb-4">
             [ TIMELINE STREAM ]
