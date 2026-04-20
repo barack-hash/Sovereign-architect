@@ -1745,7 +1745,7 @@ export default function App() {
           </div>
         </div>
       ) : (
-        <div className="relative h-screen w-screen bg-neutral-950 overflow-hidden font-sans text-white">
+        <div className="relative h-screen w-screen bg-neutral-950 overflow-hidden font-sans text-white p-4 flex gap-4">
       {chaosReport && (
         <div className="absolute top-24 right-8 z-[100] drop-shadow-2xl">
           <div className="bg-neutral-900/60 backdrop-blur-2xl border border-white/10 p-6 max-w-md text-center shadow-2xl rounded-2xl">
@@ -1783,10 +1783,10 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <div className="absolute inset-0 flex flex-col min-w-0 z-0">
-        <div className="flex flex-col h-full">
+      <div className="flex-1 min-w-0 min-h-0 flex flex-col z-0 overflow-hidden">
+        <div className="flex flex-col min-h-0 h-full">
           {/* Header */}
-            <header className="absolute top-4 left-[18rem] right-4 bg-neutral-900/40 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl px-6 py-3 flex justify-between items-center z-40 gap-4">
+            <header className="bg-neutral-900/40 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl px-6 py-3 flex justify-between items-center z-40 gap-4">
           <div className="flex items-center gap-4 flex-1 min-w-[300px]">
             <div className="flex items-center bg-white/5 px-4 py-2 rounded-xl border border-white/10 flex-1 max-w-80 group focus-within:border-primary/50 transition-all">
               <Search size={14} className="text-on-surface-variant group-focus-within:text-primary transition-colors" />
@@ -1923,7 +1923,7 @@ export default function App() {
 
         {/* Tabbed Navigation */}
         {activeTab === 'Path Simulations' && (
-          <div className="absolute top-24 left-[18rem] z-40 flex bg-neutral-900/40 backdrop-blur-2xl border border-white/10 rounded-full px-2 py-1 shadow-2xl">
+          <div className="mt-4 self-start z-40 flex bg-neutral-900/40 backdrop-blur-2xl border border-white/10 rounded-full px-2 py-1 shadow-2xl">
             <button 
               onClick={() => setViewMode('terminal')}
               className={cn(
@@ -1948,7 +1948,7 @@ export default function App() {
         )}
 
         {/* Dashboard Content */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 min-h-0 min-w-0 flex overflow-hidden mt-4">
           {activeTab === 'Constraints' ? (
             <ConstraintsView systemConstraints={systemConstraints} setSystemConstraints={setSystemConstraints} />
           ) : activeTab === 'Daily Log' ? (
@@ -3352,7 +3352,7 @@ export default function App() {
       </div>
 
       {/* Bottom Ticker */}
-        <footer className="absolute bottom-4 left-[18rem] right-4 h-10 bg-neutral-900/40 backdrop-blur-2xl border border-white/10 rounded-full flex items-center overflow-hidden z-20 shadow-2xl">
+        <footer className="mt-4 h-10 bg-neutral-900/40 backdrop-blur-2xl border border-white/10 rounded-full flex items-center overflow-hidden z-20 shadow-2xl">
           <div className="flex items-center gap-12 px-6 whitespace-nowrap animate-marquee">
             {[
               { label: 'NET WORTH', value: formatCurrency(projectedNetWorth), color: 'text-primary' },

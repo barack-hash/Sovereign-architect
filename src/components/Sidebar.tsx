@@ -38,7 +38,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside 
       className={cn(
-        "absolute top-4 left-4 bottom-4 bg-neutral-900/40 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl flex flex-col py-8 transition-all duration-300 ease-in-out z-40 overflow-hidden",
+        "h-full shrink-0 bg-neutral-900/40 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl flex flex-col py-8 transition-all duration-300 ease-in-out z-40 overflow-hidden",
         isCollapsed ? "w-20 items-center" : "w-64"
       )}
     >
