@@ -5,10 +5,29 @@ interface DailyLogViewProps {
   nodes: any[];
   currentSimMonth: number;
   systemConstraints?: any;
+  totalFixedCosts: number;
+  variableCosts: number;
+  projectedYield: number;
+  savingsBelowBuffer?: boolean;
 }
 
-const DailyLogView: React.FC<DailyLogViewProps> = ({ nodes, currentSimMonth, systemConstraints }) => {
+const DailyLogView: React.FC<DailyLogViewProps> = ({
+  nodes,
+  currentSimMonth,
+  systemConstraints,
+  totalFixedCosts,
+  variableCosts,
+  projectedYield,
+  savingsBelowBuffer = false,
+}) => {
   const activeEvents = nodes.filter(n => n.type === 'event' && (n.month || 0) <= currentSimMonth);
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value || 0);
+  const formatEventTime = (event: any) => {
+    if (event?.date) return event.date;
+    const monthValue = Number(event?.month || 0);
+    return `MONTH ${monthValue > 0 ? monthValue : currentSimMonth}`;
+  };
 
   const minSleep = systemConstraints?.minSleep || 0;
   const maxLabor = systemConstraints?.maxLabor || 0;
@@ -16,19 +35,37 @@ const DailyLogView: React.FC<DailyLogViewProps> = ({ nodes, currentSimMonth, sys
 
   return (
     <div className="flex-1 w-full max-w-6xl mx-auto flex flex-col h-full bg-surface-lowest p-8 overflow-y-auto terminal-scroll">
-      {/* Main Header */}
-      <div className="mb-8 border-b border-outline-variant/20 pb-4">
+      <div
+        className={cn(
+          'sticky top-0 z-10 bg-surface-lowest/95 backdrop-blur-md border-b pb-4 mb-6 transition-colors',
+          savingsBelowBuffer
+            ? 'border-b-red-600/40 ring-1 ring-red-600/25 border-outline-variant/20'
+            : 'border-outline-variant/20'
+        )}
+      >
         <h1 className="text-xl font-headline font-bold text-primary tracking-widest uppercase">
           [ TACTICAL EXECUTION : DAILY PROTOCOL ]
         </h1>
-        <h2 className="text-sm font-mono text-on-surface-variant mt-2 tracking-wider">
+        <h2 className="text-sm font-mono text-on-surface-variant mt-2 tracking-wider mb-4">
           SIMULATION MONTH: {currentSimMonth}
         </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          <div className="rounded-lg border border-outline-variant/30 bg-surface-container px-3 py-2">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Total Fixed Costs</p>
+            <p className="text-sm font-mono font-bold text-secondary">{formatCurrency(totalFixedCosts)}</p>
+          </div>
+          <div className="rounded-lg border border-outline-variant/30 bg-surface-container px-3 py-2">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Variable Costs</p>
+            <p className="text-sm font-mono font-bold text-secondary">{formatCurrency(variableCosts)}</p>
+          </div>
+          <div className="rounded-lg border border-outline-variant/30 bg-surface-container px-3 py-2">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Projected Yield</p>
+            <p className="text-sm font-mono font-bold text-primary">{formatCurrency(projectedYield)}</p>
+          </div>
+        </div>
       </div>
 
-      {/* 2-Column Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 flex-1">
-        {/* Left Column: ACTIVE OPERATIONS */}
         <div className="border border-outline-variant/30 rounded-lg p-6 bg-surface-container flex flex-col">
           <div className="flex items-center justify-between mb-6 border-b border-outline-variant/20 pb-2">
             <h3 className="text-md font-headline font-bold text-secondary tracking-widest uppercase">
@@ -40,14 +77,29 @@ const DailyLogView: React.FC<DailyLogViewProps> = ({ nodes, currentSimMonth, sys
               activeEvents.map((event) => (
                 <div 
                   key={event.id}
-                  className="group flex items-center gap-3 p-3 border border-outline-variant/20 rounded bg-surface hover:bg-surface-highest hover:border-primary/50 transition-all cursor-pointer"
+                  className={cn(
+                    "group grid grid-cols-[120px_1fr] gap-3 p-3 border rounded bg-surface hover:bg-surface-highest transition-all cursor-pointer",
+                    (Number(event.monthlyIncome) || 0) > (Number(event.ongoingCost) || 0)
+                      ? "border-l-2 border-l-emerald-500/70 border-outline-variant/20 hover:border-primary/50"
+                      : (Number(event.ongoingCost) || 0) > (Number(event.monthlyIncome) || 0)
+                        ? "border-l-2 border-l-red-600/70 border-outline-variant/20 hover:border-secondary/50"
+                        : "border-outline-variant/20 hover:border-primary/40"
+                  )}
                 >
-                  <span className="text-on-surface-variant font-mono group-hover:text-primary transition-colors">
-                    [ ]
-                  </span>
-                  <span className="text-on-surface font-mono text-sm tracking-wide">
-                    {event.name || 'Unnamed Op'}
-                  </span>
+                  <div className="text-[11px] font-mono text-on-surface-variant uppercase tracking-wider">
+                    {formatEventTime(event)}
+                  </div>
+                  <div className="flex items-center justify-between gap-3 min-w-0">
+                    <span className="text-on-surface font-mono text-sm tracking-wide truncate">
+                      {event.name || 'Unnamed Op'}
+                    </span>
+                    <span className={cn(
+                      "text-xs font-mono font-bold whitespace-nowrap",
+                      (Number(event.monthlyIncome) || 0) >= (Number(event.ongoingCost) || 0) ? "text-emerald-500" : "text-red-600"
+                    )}>
+                      {formatCurrency((Number(event.monthlyIncome) || 0) - (Number(event.ongoingCost) || 0))}
+                    </span>
+                  </div>
                 </div>
               ))
             ) : (
@@ -60,7 +112,6 @@ const DailyLogView: React.FC<DailyLogViewProps> = ({ nodes, currentSimMonth, sys
           </div>
         </div>
 
-        {/* Right Column: 24-HOUR CAPACITY */}
         <div className="border border-outline-variant/30 rounded-lg p-6 bg-surface-container flex flex-col">
           <div className="flex items-center justify-between mb-6 border-b border-outline-variant/20 pb-2">
             <h3 className="text-md font-headline font-bold text-secondary tracking-widest uppercase">

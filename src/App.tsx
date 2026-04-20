@@ -306,6 +306,10 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('Path Simulations');
   const [chaosReport, setChaosReport] = useState<string | null>(null);
   const [pathReport, setPathReport] = useState<{ target: string, reason: string } | null>(null);
+  const [protocolChaosReport, setProtocolChaosReport] = useState<string | null>(null);
+  const [protocolPathReport, setProtocolPathReport] = useState<{ target: string; reason: string } | null>(null);
+  const [canvasSyncing, setCanvasSyncing] = useState(false);
+  const canvasSyncTimerRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Security State
   const [isUnlocked, setIsUnlocked] = useState(false);
@@ -355,6 +359,7 @@ export default function App() {
   const [systemConstraints, setSystemConstraints] = useLocalStorage('sovereign-system-constraints', { 
     minCash: 0, 
     maxBurn: 0, 
+    minMonthlyBuffer: 0,
     minSleep: 0, 
     maxLabor: 0,
     prayerStrict: false,
@@ -545,30 +550,14 @@ export default function App() {
     }
   };
 
-  // Keyboard Shortcuts
-  React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (viewMode !== 'canvas') return;
-      
-      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-      const cmdOrCtrl = isMac ? e.metaKey : e.ctrlKey;
-
-      if (cmdOrCtrl && e.key.toLowerCase() === 'z') {
-        if (e.shiftKey) {
-          handleRedo();
-        } else {
-          handleUndo();
-        }
-        e.preventDefault();
-      } else if (cmdOrCtrl && e.key.toLowerCase() === 'y') {
-        handleRedo();
-        e.preventDefault();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [viewMode, timelineEvents, objectiveDependencies, currentCash, currentDebt, baseMonthlyIncome, goalName, targetCapital, targetTimeline, burnRateLedger]);
+  const bumpCanvasSync = useCallback(() => {
+    setCanvasSyncing(true);
+    if (canvasSyncTimerRef.current) clearTimeout(canvasSyncTimerRef.current);
+    canvasSyncTimerRef.current = setTimeout(() => {
+      setCanvasSyncing(false);
+      canvasSyncTimerRef.current = undefined;
+    }, 650);
+  }, []);
 
   const handleResetStrategy = () => {
     recordHistory(getCurrentCanvasState());
@@ -902,7 +891,8 @@ export default function App() {
       }
       return [...newEvents];
     });
-  }, [recordHistory, getCurrentCanvasState]);
+    bumpCanvasSync();
+  }, [recordHistory, getCurrentCanvasState, bumpCanvasSync]);
 
   const handleConnectEvents = useCallback((sourceId: string, targetId: string, sourceHandle?: string, targetHandle?: string) => {
     if (sourceId === targetId) return;
@@ -989,6 +979,64 @@ export default function App() {
     addTerminalLog(`NODE DELETED: ${id} REMOVED FROM SYSTEM.`);
   }, [recordHistory, getCurrentCanvasState, addTerminalLog]);
 
+  // Keyboard Shortcuts (Canvas view)
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (viewMode !== 'canvas') return;
+
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          (target as HTMLElement).isContentEditable)
+      ) {
+        return;
+      }
+
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const cmdOrCtrl = isMac ? e.metaKey : e.ctrlKey;
+
+      if (cmdOrCtrl && e.key.toLowerCase() === 'z') {
+        if (e.shiftKey) {
+          handleRedo();
+        } else {
+          handleUndo();
+        }
+        e.preventDefault();
+      } else if (cmdOrCtrl && e.key.toLowerCase() === 'y') {
+        handleRedo();
+        e.preventDefault();
+      } else if (cmdOrCtrl && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        handleExport();
+      } else if (e.code === 'Space') {
+        e.preventDefault();
+        window.dispatchEvent(new Event('sovereign-canvas-fitview'));
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedNodeId) {
+          const node = timelineEvents.find((x) => x.id === selectedNodeId);
+          if (node && node.type !== 'genesis') {
+            e.preventDefault();
+            handleDeleteEvent(selectedNodeId);
+            setSelectedNodeId(null);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    viewMode,
+    timelineEvents,
+    selectedNodeId,
+    handleDeleteEvent,
+    handleUndo,
+    handleRedo,
+    handleExport,
+  ]);
+
   const handleDeleteEdge = useCallback((edgeId: string) => {
     if (appState !== 'PLANNING') return;
     
@@ -1017,6 +1065,7 @@ export default function App() {
 
   const handleNodeDragStop = () => {
     recordHistory(getCurrentCanvasState());
+    bumpCanvasSync();
   };
 
   const handleAddExpense = useCallback(() => {
@@ -1407,6 +1456,14 @@ export default function App() {
   }, [activeGenesis?.baselineLedger]);
 
   const netMonthlyYield = totalMonthlyIncome - totalMonthlyBurnRate;
+  const eventMonthlyCost = useMemo(() => timelineEvents
+    .filter(e => e.type === 'event' && e.status !== 'FAILED')
+    .reduce((sum, e) => sum + (Number(e.ongoingCost) || 0), 0), [timelineEvents]);
+  const eventMonthlyIncome = useMemo(() => timelineEvents
+    .filter(e => e.type === 'event' && e.status !== 'FAILED')
+    .reduce((sum, e) => sum + (Number(e.monthlyIncome) || 0), 0), [timelineEvents]);
+  const liveMonthlyExpenses = totalMonthlyBurnRate + eventMonthlyCost;
+  const liveMonthlySavings = (totalMonthlyIncome + eventMonthlyIncome) - liveMonthlyExpenses;
 
   // Stress Test Modifiers
   const volatilityImpact = stressTests.marketVolatility ? -4.5 : 0;
@@ -1476,6 +1533,16 @@ export default function App() {
     })
     .map(e => e.id), [timelineEvents, simulationData]);
 
+  const objectives = useMemo(
+    () => timelineEvents.filter((n) => n.type === 'objective'),
+    [timelineEvents]
+  );
+
+  const simAtCurrentMonth = useMemo(
+    () => simulationData.find((d) => d.month === currentSimulationMonth),
+    [simulationData, currentSimulationMonth]
+  );
+
   const chartData = useMemo(() => {
     return simulationData.map(row => ({
       ...row,
@@ -1499,6 +1566,26 @@ export default function App() {
   };
   const projectedNetWorth = currentData.Financial;
   const netChange = projectedNetWorth - initialNetWorth;
+
+  const minMonthlyBuffer = Number(systemConstraints.minMonthlyBuffer ?? 0);
+  const savingsBelowBuffer =
+    minMonthlyBuffer > 0 && liveMonthlySavings < minMonthlyBuffer;
+
+  const criticalAlert = useMemo(() => {
+    if (savingsBelowBuffer) return true;
+    if (systemConstraints.minCash > 0 && projectedNetWorth < systemConstraints.minCash) return true;
+    if (systemConstraints.maxBurn > 0 && liveMonthlyExpenses > systemConstraints.maxBurn) return true;
+    const v = simAtCurrentMonth?.violations;
+    return Array.isArray(v) && v.length > 0;
+  }, [
+    savingsBelowBuffer,
+    systemConstraints.minCash,
+    systemConstraints.maxBurn,
+    projectedNetWorth,
+    liveMonthlyExpenses,
+    simAtCurrentMonth,
+  ]);
+
   const isModalView = activeTab === 'Constraints' || activeTab === 'Goals';
   const glassPanelClass = 'bg-neutral-900/40 border-[0.5px] border-white/5';
   const glassPanelStrongClass = 'bg-neutral-900/60 border-[0.5px] border-white/5';
@@ -1596,8 +1683,6 @@ export default function App() {
   };
 
   const traceCriticalPath = () => {
-    const objectives = timelineEvents.filter(e => e.type === 'objective');
-    
     if (objectives.length === 0) {
       setPathReport({ 
         target: "NO EXTRACTION POINTS", 
@@ -1613,6 +1698,51 @@ export default function App() {
       reason: `This objective is positioned at Month ${bottleneckNode.month}. It represents the maximum temporal limit of your current strategy. All preceding operations, resource gathering, and daily tasks must be optimized to clear this specific bottleneck.` 
     });
   };
+
+  React.useEffect(() => {
+    if (appState !== 'ACTIVE_PROTOCOL') {
+      setProtocolChaosReport(null);
+      setProtocolPathReport(null);
+      return;
+    }
+
+    const issue = simulationData.find((d) => {
+      if (d.month < 1) return false;
+      if (d.isCrisis === true) return true;
+      if (typeof d.Financial === 'number' && d.Financial < 0) return true;
+      if (Array.isArray(d.violations) && d.violations.length > 0) return true;
+      if (Array.isArray(d.events)) {
+        return d.events.some(
+          (ev: any) =>
+            Number(ev.monthlyIncome || 0) - Number(ev.ongoingCost || 0) < 0
+        );
+      }
+      return false;
+    });
+
+    if (issue) {
+      const violText =
+        Array.isArray(issue.violations) && issue.violations.length > 0
+          ? issue.violations.join('; ')
+          : issue.isCrisis === true || (typeof issue.Financial === 'number' && issue.Financial < 0)
+            ? 'Negative net position / liquidity stress'
+            : 'Negative recurring cashflow on scheduled events';
+      setProtocolChaosReport(`[!] Protocol watch: ${violText} (Month ${issue.month})`);
+      setProtocolPathReport({
+        target: `Liquidity gap at Month ${issue.month}`,
+        reason: `${violText}. Review events and safety nets while the run is active.`,
+      });
+    } else {
+      setProtocolChaosReport(null);
+      setProtocolPathReport(null);
+    }
+  }, [appState, simulationData, calculationKey]);
+
+  const displayChaos = chaosReport ?? protocolChaosReport;
+  const displayPath = pathReport ?? protocolPathReport;
+
+  const reportCardClass =
+    'max-w-md rounded-2xl border-[0.5px] border-red-900/50 border-l-2 border-l-red-600/70 bg-stone-100/[0.04] backdrop-blur-2xl p-6 text-stone-100 shadow-2xl ring-1 ring-red-900/20';
 
   // Helper for formatting currency
   const formatCurrency = (val: number) => 
@@ -1703,30 +1833,36 @@ export default function App() {
         </div>
       ) : (
         <div className="relative h-screen w-screen overflow-hidden font-sans bg-neutral-950 text-white">
-      {!isModalView && (chaosReport || pathReport) && (
+      {!isModalView && (displayChaos || displayPath) && (
         <div className="fixed top-24 right-8 z-[60] flex flex-col gap-4 drop-shadow-2xl">
-      {chaosReport && (
+      {displayChaos && (
         <div>
-          <div className={cn("backdrop-blur-2xl border p-6 max-w-md text-center shadow-2xl rounded-2xl", glassPanelStrongClass)}>
-            <h2 className="text-primary font-bold font-headline text-xl mb-4 tracking-widest">[ CHAOS REPORT ]</h2>
-            <p className="text-white font-headline mb-8">{chaosReport}</p>
-            <button onClick={() => setChaosReport(null)} className="border border-white/10 hover:border-primary/50 text-white hover:text-primary rounded-full px-6 py-2 font-headline font-bold tracking-widest hover:bg-primary/10 transition-colors">
+          <div className={cn(reportCardClass, 'text-center')}>
+            <h2 className="text-red-500 font-bold font-headline text-xl mb-4 tracking-widest">[ CHAOS REPORT ]</h2>
+            <p className="text-stone-100 font-headline mb-8 text-sm leading-relaxed">{displayChaos}</p>
+            <button
+              onClick={() => (chaosReport ? setChaosReport(null) : setProtocolChaosReport(null))}
+              className="border border-red-900/40 hover:border-red-500/60 text-stone-100 hover:text-red-400 rounded-full px-6 py-2 font-headline font-bold tracking-widest hover:bg-red-950/30 transition-colors"
+            >
               [ ACKNOWLEDGE ]
             </button>
           </div>
         </div>
       )}
-      {pathReport && (
+      {displayPath && (
         <div>
-          <div className={cn("backdrop-blur-2xl border p-6 max-w-md text-left shadow-2xl rounded-2xl", glassPanelStrongClass)}>
-            <h2 className="text-primary font-bold font-headline text-xl mb-4 tracking-widest">[ CRITICAL PATH ANALYSIS ]</h2>
-            <div className="mb-6 border-l-2 border-primary/50 pl-4">
-              <p className="text-white/70 font-headline text-sm uppercase tracking-widest">BOTTLENECK TARGET:</p>
-              <p className="text-primary font-bold text-lg font-headline">{pathReport.target}</p>
+          <div className={cn(reportCardClass, 'text-left')}>
+            <h2 className="text-red-500 font-bold font-headline text-xl mb-4 tracking-widest">[ CRITICAL PATH ANALYSIS ]</h2>
+            <div className="mb-6 border-l border-l-red-600/60 pl-4">
+              <p className="text-stone-300 font-headline text-sm uppercase tracking-widest">BOTTLENECK TARGET:</p>
+              <p className="text-stone-100 font-bold text-lg font-headline">{displayPath.target}</p>
             </div>
-            <p className="text-white/90 font-headline mb-8 text-sm leading-relaxed">{pathReport.reason}</p>
+            <p className="text-stone-200 font-headline mb-8 text-sm leading-relaxed">{displayPath.reason}</p>
             <div className="flex justify-center">
-              <button onClick={() => setPathReport(null)} className="border border-white/10 hover:border-primary/50 text-white hover:text-primary rounded-full px-6 py-2 font-headline font-bold tracking-widest hover:bg-primary/10 transition-colors">
+              <button
+                onClick={() => (pathReport ? setPathReport(null) : setProtocolPathReport(null))}
+                className="border border-red-900/40 hover:border-red-500/60 text-stone-100 hover:text-red-400 rounded-full px-6 py-2 font-headline font-bold tracking-widest hover:bg-red-950/30 transition-colors"
+              >
                 [ CLOSE REPORT ]
               </button>
             </div>
@@ -1750,23 +1886,35 @@ export default function App() {
         <div className="flex flex-col min-h-0 h-full">
           {/* Header */}
           {!isModalView && (
-            <header className={cn("fixed top-6 left-1/2 -translate-x-1/2 w-fit max-w-[92vw] backdrop-blur-md border-[0.5px] rounded-full shadow-[0_20px_80px_rgba(0,0,0,0.12)] px-4 py-2 z-40 transition-all duration-300 group", glassPanelClass)}>
-              <div className="flex items-center gap-4 text-[10px] tracking-[0.2em] uppercase">
+            <header className={cn(
+              "group fixed top-6 left-1/2 -translate-x-1/2 z-40 w-fit max-w-[92vw]",
+              "min-h-[48px] overflow-visible rounded-full border-[0.5px] px-4 py-2",
+              "backdrop-blur-md shadow-[0_20px_80px_rgba(0,0,0,0.12)] transition-all duration-300",
+              glassPanelClass
+            )}>
+              <div className="flex min-h-[44px] items-center gap-4 overflow-hidden text-[10px] tracking-[0.2em] uppercase">
                 <div className="flex items-center gap-2">
-                  <span className="text-white/50">Monthly Savings</span>
-                  <span className={cn("font-mono font-bold", netMonthlyYield < 0 ? "text-red-600" : "text-emerald-500")}>
-                    {formatCurrency(netMonthlyYield)}
+                  <span className="text-white/50">Monthly Expenses</span>
+                  <span className="font-mono font-bold text-red-600">
+                    {formatCurrency(liveMonthlyExpenses)}
                   </span>
                 </div>
                 <div className="w-px h-3 bg-white/10" />
                 <div className="flex items-center gap-2">
-                  <span className="text-white/50">Net Worth</span>
-                  <span className={cn("font-mono font-bold", projectedNetWorth < 0 ? "text-red-600" : "text-emerald-500")}>
-                    {formatCurrency(projectedNetWorth)}
+                  <span className="text-white/50">Monthly Savings</span>
+                  <span
+                    className={cn(
+                      'font-mono font-bold',
+                      savingsBelowBuffer && 'text-red-600 animate-pulse',
+                      !savingsBelowBuffer && liveMonthlySavings < 0 && 'text-red-600',
+                      !savingsBelowBuffer && liveMonthlySavings >= 0 && 'text-emerald-500'
+                    )}
+                  >
+                    {formatCurrency(liveMonthlySavings)}
                   </span>
                 </div>
               </div>
-              <div className="hidden group-hover:flex items-center gap-2 mt-3 pt-3 border-t border-white/5">
+              <div className="pointer-events-none invisible absolute left-1/2 top-full z-50 mt-2 flex min-w-max max-w-[min(92vw,720px)] -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-2xl border-[0.5px] border-white/5 bg-neutral-900/95 px-3 py-2 opacity-0 shadow-2xl backdrop-blur-md transition-all duration-200 group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100">
                 <button 
                   onClick={handleResetStrategy}
                   className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border-[0.5px] border-white/5 text-[10px] font-semibold tracking-[0.16em] uppercase backdrop-blur-md transition-all text-emerald-500"
@@ -1826,7 +1974,10 @@ export default function App() {
           )}
 
         {/* Dashboard Content */}
-        <div className="absolute inset-0 min-h-0 min-w-0 flex overflow-hidden pt-36 pb-16 pl-24 pr-6">
+        <div
+          key={`${activeTab}-${viewMode}`}
+          className="absolute inset-0 min-h-0 min-w-0 flex animate-in fade-in overflow-hidden pt-36 pb-16 pl-24 pr-6 duration-300"
+        >
           {activeTab === 'Constraints' ? (
             <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50 p-4">
               <div className="relative max-w-2xl w-full max-h-[calc(100vh-2rem)] bg-neutral-900/80 border-[0.5px] border-white/10 rounded-3xl shadow-2xl backdrop-blur-md overflow-hidden">
@@ -1837,13 +1988,21 @@ export default function App() {
               </div>
             </div>
           ) : activeTab === 'Daily Log' ? (
-            <DailyLogView nodes={timelineEvents} currentSimMonth={currentSimulationMonth} systemConstraints={systemConstraints} />
+            <DailyLogView
+              nodes={timelineEvents}
+              currentSimMonth={currentSimulationMonth}
+              systemConstraints={systemConstraints}
+              totalFixedCosts={totalMonthlyBurnRate}
+              variableCosts={eventMonthlyCost}
+              projectedYield={totalMonthlyIncome + eventMonthlyIncome}
+              savingsBelowBuffer={savingsBelowBuffer}
+            />
           ) : activeTab === 'Goals' ? (
             <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50 p-4">
               <div className="relative max-w-2xl w-full max-h-[calc(100vh-2rem)] bg-neutral-900/80 border-[0.5px] border-white/10 rounded-3xl shadow-2xl backdrop-blur-md overflow-hidden">
                 <button onClick={() => setActiveTab('Path Simulations')} className="absolute top-4 right-4 text-red-600 font-mono text-sm">[ X ]</button>
                 <div className="p-8 h-full max-h-[calc(100vh-2rem)] overflow-y-auto">
-                  <GoalsView nodes={timelineEvents} simulationData={simulationData} currentSimMonth={currentSimulationMonth} />
+                  <GoalsView objectives={objectives} simulationData={simulationData} currentSimMonth={currentSimulationMonth} />
                 </div>
               </div>
             </div>
@@ -3239,6 +3398,8 @@ export default function App() {
           onTidyGrid={handleTidyGrid}
           onLogCompleted={handleLogCompleted}
           onTraceCriticalPath={traceCriticalPath}
+          ghostMode={isGhostMode}
+          onGraphSync={bumpCanvasSync}
         />
         )}
       </div>
@@ -3247,36 +3408,119 @@ export default function App() {
         {!isModalView && (
         <footer className={cn("absolute bottom-4 left-1/2 -translate-x-1/2 w-[min(94vw,1100px)] h-9 backdrop-blur-md border-[0.5px] rounded-2xl flex items-center overflow-hidden z-[100] shadow-[0_20px_80px_rgba(0,0,0,0.08)]", glassPanelClass)}>
           <div className="flex items-center gap-12 px-6 whitespace-nowrap animate-marquee">
-            {[
-              { label: 'NET WORTH', value: formatCurrency(projectedNetWorth), color: 'text-primary' },
-              { label: 'VARIANCE', value: `${((netChange / (initialNetWorth || 1)) * 100).toFixed(2)}%`, color: netChange > 0 ? 'text-primary' : 'text-secondary' },
-              { label: 'SYSTEM_STATUS', value: (simulationData[currentSimulationMonth]?.violations?.length > 0) ? 'BREACH DETECTED' : 'OPTIMAL', color: (simulationData[currentSimulationMonth]?.violations?.length > 0) ? 'text-[#ef4444]' : 'text-primary' },
-              { label: 'PATH_ALIGNMENT', value: `${(currentData.Emotional * 0.942).toFixed(1)}%`, color: 'text-primary' },
-              { label: 'MONTHLY_EXPENSES', value: `${formatCurrency(totalMonthlyBurnRate)}/MO`, color: 'text-secondary' },
-              { label: 'MONTHLY_SAVINGS', value: `${formatCurrency(netMonthlyYield)}/MO`, color: netMonthlyYield < 0 ? 'text-secondary' : 'text-primary' },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <span className="text-[8px] font-headline uppercase text-on-surface-variant tracking-widest">{item.label}:</span>
-                <span className={cn("text-[9px] font-headline font-bold", item.color)}>{item.value}</span>
-              </div>
-            ))}
-            {/* Duplicate for seamless loop */}
-            {[
-              { label: 'NET WORTH', value: formatCurrency(projectedNetWorth), color: 'text-primary' },
-              { label: 'VARIANCE', value: `${((netChange / (initialNetWorth || 1)) * 100).toFixed(2)}%`, color: netChange > 0 ? 'text-primary' : 'text-secondary' },
-              { label: 'SYSTEM_STATUS', value: (simulationData[currentSimulationMonth]?.violations?.length > 0) ? 'BREACH DETECTED' : 'OPTIMAL', color: (simulationData[currentSimulationMonth]?.violations?.length > 0) ? 'text-[#ef4444]' : 'text-primary' },
-              { label: 'PATH_ALIGNMENT', value: `${(currentData.Emotional * 0.942).toFixed(1)}%`, color: 'text-primary' },
-              { label: 'MONTHLY_EXPENSES', value: `${formatCurrency(totalMonthlyBurnRate)}/MO`, color: 'text-secondary' },
-              { label: 'MONTHLY_SAVINGS', value: `${formatCurrency(netMonthlyYield)}/MO`, color: netMonthlyYield < 0 ? 'text-secondary' : 'text-primary' },
-            ].map((item, i) => (
-              <div key={`dup-${i}`} className="flex items-center gap-3">
-                <span className="text-[8px] font-headline uppercase text-on-surface-variant tracking-widest">{item.label}:</span>
-                <span className={cn("text-[9px] font-headline font-bold", item.color)}>{item.value}</span>
-              </div>
-            ))}
+            {(() => {
+              const breachCount = simAtCurrentMonth?.violations?.length ?? 0;
+              const systemStatusValue = criticalAlert
+                ? 'CRITICAL_ALERT'
+                : breachCount > 0
+                  ? 'BREACH DETECTED'
+                  : 'OPTIMAL';
+              const systemStatusColor =
+                criticalAlert || breachCount > 0 ? 'text-[#ef4444]' : 'text-primary';
+              const savingsTickerColor =
+                savingsBelowBuffer
+                  ? 'text-[#ef4444] animate-pulse'
+                  : liveMonthlySavings < 0
+                    ? 'text-secondary'
+                    : 'text-primary';
+              const rows: { label: string; value: string; color: string }[] = [
+                ...(canvasSyncing
+                  ? [
+                      {
+                        label: 'CANVAS',
+                        value: 'SYNCHRONIZING...',
+                        color: 'text-amber-400 animate-pulse',
+                      },
+                    ]
+                  : []),
+                { label: 'NET WORTH', value: formatCurrency(projectedNetWorth), color: 'text-primary' },
+                {
+                  label: 'VARIANCE',
+                  value: `${((netChange / (initialNetWorth || 1)) * 100).toFixed(2)}%`,
+                  color: netChange > 0 ? 'text-primary' : 'text-secondary',
+                },
+                { label: 'SYSTEM_STATUS', value: systemStatusValue, color: systemStatusColor },
+                {
+                  label: 'PATH_ALIGNMENT',
+                  value: `${(currentData.Emotional * 0.942).toFixed(1)}%`,
+                  color: 'text-primary',
+                },
+                {
+                  label: 'MONTHLY_EXPENSES',
+                  value: `${formatCurrency(liveMonthlyExpenses)}/MO`,
+                  color: 'text-secondary',
+                },
+                {
+                  label: 'MONTHLY_SAVINGS',
+                  value: `${formatCurrency(liveMonthlySavings)}/MO`,
+                  color: savingsTickerColor,
+                },
+              ];
+              return (
+                <>
+                  {rows.map((item, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <span className="text-[8px] font-headline uppercase text-on-surface-variant tracking-widest">
+                        {item.label}:
+                      </span>
+                      <span className={cn('text-[9px] font-headline font-bold', item.color)}>{item.value}</span>
+                    </div>
+                  ))}
+                  {rows.map((item, i) => (
+                    <div key={`dup-${i}`} className="flex items-center gap-3">
+                      <span className="text-[8px] font-headline uppercase text-on-surface-variant tracking-widest">
+                        {item.label}:
+                      </span>
+                      <span className={cn('text-[9px] font-headline font-bold', item.color)}>{item.value}</span>
+                    </div>
+                  ))}
+                </>
+              );
+            })()}
           </div>
         </footer>
         )}
+        <div className="fixed bottom-6 left-6 z-50 group">
+          <button
+            aria-label="Open visual legend"
+            className="w-8 h-8 rounded-full bg-neutral-900/70 backdrop-blur-md border border-white/10 text-stone-200 text-xs font-mono font-bold flex items-center justify-center"
+          >
+            ?
+          </button>
+          <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute bottom-10 left-0 w-80 max-w-[calc(100vw-2rem)] bg-neutral-950/95 backdrop-blur-xl border border-white/15 rounded-2xl p-4 text-stone-100 shadow-2xl ring-1 ring-white/5">
+            <h4 className="text-[10px] tracking-[0.18em] uppercase text-stone-200 mb-3">Legend</h4>
+            <div className="space-y-3 text-[11px] leading-snug">
+              <div>
+                <p className="text-stone-400 uppercase text-[9px] tracking-[0.16em] mb-1">Nodes</p>
+                <div className="flex flex-col gap-1 text-stone-100">
+                  <span><span className="text-emerald-500 font-bold">[GREEN]</span> Event</span>
+                  <span><span className="text-blue-400 font-bold">[BLUE]</span> Objective</span>
+                  <span><span className="text-yellow-400 font-bold">[YELLOW]</span> Note</span>
+                </div>
+              </div>
+              <div>
+                <p className="text-stone-400 uppercase text-[9px] tracking-[0.16em] mb-1">Colors</p>
+                <div className="flex flex-col gap-1 text-stone-100">
+                  <span><span className="text-emerald-500 font-bold">Emerald</span> = Healthy / Verified</span>
+                  <span><span className="text-red-600 font-bold">Red</span> = Deficit / Critical</span>
+                </div>
+              </div>
+              <div>
+                <p className="text-stone-400 uppercase text-[9px] tracking-[0.16em] mb-1">Logic</p>
+                <span className="text-stone-100">Monthly Savings = Total Yield - Total Expenses</span>
+              </div>
+              <div>
+                <p className="text-stone-400 uppercase text-[9px] tracking-[0.16em] mb-1">Shortcuts</p>
+                <p className="text-[9px] text-stone-400 mb-1.5">Canvas view only (focus canvas, not a text field).</p>
+                <div className="flex flex-col gap-1 font-mono text-[10px] text-stone-100">
+                  <span><span className="text-emerald-500/90">[Del]</span> Delete node</span>
+                  <span><span className="text-emerald-500/90">[⌘/Ctrl+S]</span> Save / export JSON</span>
+                  <span><span className="text-emerald-500/90">[Space]</span> Center view</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
           </div>
         </div>
       </div>

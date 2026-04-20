@@ -34,6 +34,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { label: 'Path Simulations', icon: <TrendingUp size={18} /> },
     { label: 'Daily Log', icon: <FileText size={18} /> },
   ];
+  const getHoverLabel = (label: string) => {
+    if (label === 'Path Simulations') return 'Path Simulations (Terminal/Canvas)';
+    return label;
+  };
 
   return (
     <aside 
@@ -41,7 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       onMouseLeave={() => setIsCollapsed(true)}
       className={cn(
         "h-full shrink-0 backdrop-blur-xl border-[0.5px] rounded-2xl shadow-[0_20px_80px_rgba(0,0,0,0.08)] flex flex-col py-4 transition-all duration-300 ease-in-out z-40 overflow-hidden",
-        "bg-neutral-900/35 border-white/5",
+        "bg-neutral-900/35 border-white/5 border-r-[0.5px] border-r-white/5",
         isCollapsed ? "w-16 items-center" : "w-48"
       )}
     >
@@ -62,27 +66,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       <nav className="flex-1 space-y-1 w-full">
         {navItems.map((item) => (
-          <button 
-            key={item.label}
-            onClick={() => setActiveTab(item.label)}
-            className={cn(
-              "flex items-center transition-all duration-200 group relative mx-2 rounded-xl border border-transparent",
-              isCollapsed ? "justify-center px-0 py-3 w-[calc(100%-16px)]" : "px-4 py-3 w-[calc(100%-16px)]",
-              activeTab === item.label 
-                ? "text-primary bg-white/10 border-primary/20" 
-                : "text-on-surface-variant hover:text-on-surface hover:bg-white/5 hover:border-white/10"
+          <div key={item.label} className="relative group/nav">
+            <button 
+              onClick={() => setActiveTab(item.label)}
+              className={cn(
+                "flex items-center transition-all duration-200 group relative mx-2 rounded-xl border border-transparent",
+                isCollapsed ? "justify-center px-0 py-3 w-[calc(100%-16px)]" : "px-4 py-3 w-[calc(100%-16px)]",
+                activeTab === item.label 
+                  ? "text-emerald-500 bg-white/10 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)]" 
+                  : "text-on-surface-variant hover:text-on-surface hover:bg-white/5 hover:border-white/10"
+              )}
+              title={isCollapsed ? getHoverLabel(item.label) : undefined}
+            >
+              {activeTab === item.label && (
+                <div className={cn(
+                  "absolute top-0 bottom-0 w-0.5 bg-emerald-500",
+                  isCollapsed ? "right-0" : "right-0"
+                )} />
+              )}
+              <span className={cn(!isCollapsed && "mr-4")}>{item.icon}</span>
+              {!isCollapsed && <span className="font-headline tracking-wide text-xs uppercase">{item.label}</span>}
+            </button>
+            {isCollapsed && (
+              <span className="pointer-events-none absolute left-14 top-1/2 -translate-y-1/2 whitespace-nowrap opacity-0 group-hover/nav:opacity-100 transition-opacity text-[9px] tracking-[0.16em] uppercase bg-neutral-900/95 border border-white/10 rounded-lg px-2 py-1 text-stone-200 z-50">
+                {getHoverLabel(item.label)}
+              </span>
             )}
-            title={isCollapsed ? item.label : undefined}
-          >
-            {activeTab === item.label && (
-              <div className={cn(
-                "absolute top-0 bottom-0 w-0.5 bg-primary",
-                isCollapsed ? "right-0" : "right-0"
-              )} />
-            )}
-            <span className={cn(!isCollapsed && "mr-4")}>{item.icon}</span>
-            {!isCollapsed && <span className="font-headline tracking-wide text-xs uppercase">{item.label}</span>}
-          </button>
+          </div>
         ))}
       </nav>
 
@@ -120,7 +130,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           className={cn(
             "flex items-center w-[calc(100%-16px)] mx-2 py-2.5 transition-colors text-sm font-headline rounded-xl",
             isCollapsed ? "justify-center" : "px-4",
-            activeTab === 'Settings' ? "text-primary bg-white/10" : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
+            activeTab === 'Settings' ? "text-emerald-500 bg-white/10 shadow-[0_0_10px_rgba(16,185,129,0.2)]" : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
           )}
           title={isCollapsed ? "Settings" : undefined}
         >
@@ -132,7 +142,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           className={cn(
             "flex items-center w-[calc(100%-16px)] mx-2 py-2.5 transition-colors text-sm font-headline rounded-xl",
             isCollapsed ? "justify-center" : "px-4",
-            activeTab === 'Support' ? "text-primary bg-white/10" : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
+            activeTab === 'Support' ? "text-emerald-500 bg-white/10 shadow-[0_0_10px_rgba(16,185,129,0.2)]" : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
           )}
           title={isCollapsed ? "Support" : undefined}
         >

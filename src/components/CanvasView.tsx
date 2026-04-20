@@ -22,7 +22,7 @@ import {
   ReactFlowProvider,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Shield, Zap, Target, AlertTriangle, Plus, X, Info, Network, Trash2, TrendingUp, CheckCircle2, Activity, XCircle, Flag } from 'lucide-react';
+import { Shield, Zap, Target, AlertTriangle, Plus, X, Info, Network, Trash2, TrendingUp, CheckCircle2, Activity, XCircle, Flag, Ghost } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, findCriticalPath } from '../lib/utils';
 import { NODE_COLORS } from '../constants';
@@ -230,6 +230,7 @@ type EventNodeData = {
   isBottleneck?: boolean;
   errorType?: string;
   scenario?: 'primary' | 'ghost';
+  ghostScenarioActive?: boolean;
   onDelete: () => void 
 };
 type EventNode = Node<EventNodeData, 'event'>;
@@ -240,10 +241,11 @@ const EventNode = ({ data, selected }: NodeProps<EventNode>) => (
     "bg-neutral-950/70 border-white/10",
     data?.isBottleneck && data?.errorType === 'UNLINKED' && "ring-2 ring-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)] animate-pulse",
     data?.isBottleneck && data?.errorType === 'BLOCKED_BY_PARENT' && "ring-2 ring-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.5)] animate-pulse",
-    data?.scenario === 'ghost' && "opacity-50 border-dashed border-purple-500/50"
+    data?.ghostScenarioActive && "ghost-simulation-node",
+    data?.scenario === 'ghost' && "border-dashed border-purple-500/60 opacity-90"
   )}
   style={{
-    borderColor: data?.scenario === 'ghost' ? undefined : NODE_COLORS.event.border,
+    borderColor: (data?.scenario === 'ghost' || data?.ghostScenarioActive) ? undefined : NODE_COLORS.event.border,
     boxShadow: data?.isBottleneck ? undefined : (selected ? NODE_COLORS.event.glowSelected : NODE_COLORS.event.glow),
     borderWidth: selected ? '4px' : '2px',
   }}
@@ -351,6 +353,7 @@ type ObjectiveNodeData = {
   errorType?: string;
   deficit?: number;
   scenario?: 'primary' | 'ghost';
+  ghostScenarioActive?: boolean;
 };
 type ObjectiveNode = Node<ObjectiveNodeData, 'objective'>;
 
@@ -361,10 +364,11 @@ const ObjectiveNode = ({ data, selected }: NodeProps<ObjectiveNode>) => (
     data?.isBottleneck && data?.errorType === 'UNLINKED' && "ring-2 ring-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)] animate-pulse",
     data?.isBottleneck && data?.errorType === 'BLOCKED_BY_PARENT' && "ring-2 ring-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.5)] animate-pulse",
     data?.isBottleneck && data?.errorType === 'DEFICIT' && "ring-2 ring-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.5)] animate-pulse",
-    data?.scenario === 'ghost' && "opacity-50 border-dashed border-purple-500/50"
+    data?.ghostScenarioActive && "ghost-simulation-node",
+    data?.scenario === 'ghost' && "border-dashed border-purple-500/60 opacity-90"
   )}
   style={{
-    borderColor: data?.scenario === 'ghost' ? undefined : NODE_COLORS.objective.border,
+    borderColor: (data?.scenario === 'ghost' || data?.ghostScenarioActive) ? undefined : NODE_COLORS.objective.border,
     boxShadow: data?.isBottleneck ? undefined : (selected ? NODE_COLORS.objective.glowSelected : NODE_COLORS.objective.glow),
     borderWidth: selected ? '4px' : '2px',
   }}
@@ -512,6 +516,7 @@ interface CanvasViewProps {
   netMonthlyYield: number;
   appState: 'PLANNING' | 'ACTIVE_PROTOCOL';
   onNodeDragStop: () => void;
+  onGraphSync?: () => void;
   onTidyGrid: () => void;
   undo: () => void;
   redo: () => void;
@@ -519,6 +524,7 @@ interface CanvasViewProps {
   canRedo: boolean;
   onLogCompleted: (id: string) => void;
   onTraceCriticalPath: () => void;
+  ghostMode?: boolean;
 }
 
 export default function CanvasView(props: CanvasViewProps) {
@@ -565,6 +571,7 @@ function CanvasInternal({
   netMonthlyYield,
   appState,
   onNodeDragStop,
+  onGraphSync,
   onTidyGrid,
   undo,
   redo,
@@ -572,6 +579,7 @@ function CanvasInternal({
   canRedo,
   onLogCompleted,
   onTraceCriticalPath,
+  ghostMode = false,
 }: CanvasViewProps) {
   const { screenToFlowPosition, fitView } = useReactFlow();
   const [draggingNodeId, setDraggingNodeId] = React.useState<string | null>(null);
@@ -654,6 +662,7 @@ function CanvasInternal({
 
   const onNodeDragStart = (_: any, node: Node) => {
     setDraggingNodeId(node.id);
+    onGraphSync?.();
   };
 
   const onNodeDragStopInternal = (_: any, node: Node) => {
@@ -674,6 +683,7 @@ function CanvasInternal({
     }
     
     onNodeDragStop();
+    onGraphSync?.();
   };
 
   const handleUpdateEventInternal = (id: string, updates: any) => {
@@ -784,6 +794,7 @@ function CanvasInternal({
         month: event.month,
         nodeStatus,
         scenario: event.scenario,
+        ghostScenarioActive: ghostMode,
         onDelete: () => onDeleteEvent(event.id)
       };
 
@@ -924,7 +935,7 @@ function CanvasInternal({
     });
 
     return { derivedNodes: flowNodes, derivedEdges: flowEdges };
-  }, [initialHealth, timelineEvents, simulationData, ghostSimulationData, onDeleteEvent, criticalEventIds, targetTimeline, draggingNodeId, onDeleteEdge, showCriticalPath]);
+  }, [initialHealth, timelineEvents, simulationData, ghostSimulationData, onDeleteEvent, criticalEventIds, targetTimeline, draggingNodeId, onDeleteEdge, showCriticalPath, ghostMode]);
 
   React.useEffect(() => {
     setNodes(derivedNodes);
@@ -936,10 +947,24 @@ function CanvasInternal({
     fitView({ padding: 0.2 });
   }, [fitView]);
 
+  React.useEffect(() => {
+    const onFit = () => fitView({ padding: 0.2 });
+    window.addEventListener('sovereign-canvas-fitview', onFit);
+    return () => window.removeEventListener('sovereign-canvas-fitview', onFit);
+  }, [fitView]);
+
   const selectedEvent = timelineEvents.find(e => e.id === selectedNodeId);
 
   return (
     <div className="absolute inset-0 z-0 bg-neutral-950">
+      {ghostMode && (
+        <div className="pointer-events-none absolute right-6 top-4 z-[45] flex items-center gap-2 rounded-full border-[0.5px] border-emerald-500/30 bg-neutral-950/80 px-3 py-1.5 shadow-[0_0_12px_rgba(16,185,129,0.15)] backdrop-blur-md">
+          <Ghost className="h-3.5 w-3.5 text-emerald-500" aria-hidden />
+          <span className="font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-emerald-500/95">
+            [ SIMULATION ACTIVE ]
+          </span>
+        </div>
+      )}
       {nodes.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
           <div className="backdrop-blur-md border-[0.5px] border-white/5 rounded-3xl p-8 flex flex-col items-center max-w-md text-center shadow-[0_20px_80px_rgba(0,0,0,0.08)] pointer-events-auto bg-neutral-900/40">

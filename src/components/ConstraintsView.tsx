@@ -5,6 +5,7 @@ interface ConstraintsViewProps {
   systemConstraints: {
     minCash: number;
     maxBurn: number;
+    minMonthlyBuffer?: number;
     minSleep: number;
     maxLabor: number;
     prayerStrict?: boolean;
@@ -53,6 +54,15 @@ const ConstraintsView: React.FC<ConstraintsViewProps> = ({ systemConstraints, se
               type="number"
               value={systemConstraints.maxBurn}
               onChange={(e) => setSystemConstraints({ ...systemConstraints, maxBurn: Number(e.target.value) || 0 })}
+              className="w-full bg-surface-lowest border border-outline-variant/20 p-2 rounded text-emerald-400 font-mono text-sm focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-headline text-on-surface-variant mb-2">Minimum Monthly Buffer ($/mo)</label>
+            <input
+              type="number"
+              value={systemConstraints.minMonthlyBuffer ?? 0}
+              onChange={(e) => setSystemConstraints({ ...systemConstraints, minMonthlyBuffer: Number(e.target.value) || 0 })}
               className="w-full bg-surface-lowest border border-outline-variant/20 p-2 rounded text-emerald-400 font-mono text-sm focus:outline-none focus:border-emerald-500"
             />
           </div>

@@ -39,10 +39,53 @@
   .animate-marquee {
     animation: marquee 20s linear infinite;
   }
+
+  /* Step 3 / Operation Synchronicity: content fade (Tailwind plugin-free) */
+  .animate-in {
+    animation-duration: 300ms;
+    animation-timing-function: ease-out;
+    animation-fill-mode: both;
+  }
+  .fade-in {
+    animation-name: content-fade-in;
+  }
 }
 
 @keyframes marquee {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
+}
+
+@keyframes content-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Scenario planner: subtle pulsing / glitch-adjacent border on canvas nodes */
+@keyframes ghost-border-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(16, 185, 129, 0.35),
+      0 0 14px rgba(16, 185, 129, 0.12);
+  }
+  40% {
+    box-shadow:
+      0 0 0 1px rgba(168, 85, 247, 0.45),
+      0 0 18px rgba(168, 85, 247, 0.18);
+  }
+  70% {
+    box-shadow:
+      0 0 0 1px rgba(16, 185, 129, 0.25),
+      0 0 10px rgba(16, 185, 129, 0.1);
+  }
+}
+
+.ghost-simulation-node {
+  animation: ghost-border-pulse 2.2s ease-in-out infinite;
 }
 
