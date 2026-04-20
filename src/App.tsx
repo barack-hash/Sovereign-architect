@@ -481,6 +481,8 @@ export default function App() {
     targetTimeline?: number;
     // Note specific
     content?: string;
+    /** Tactical cartography: life zone for sector overlays on canvas */
+    lifeSector?: 'professional' | 'personal' | 'financial';
   }[]>('sovereign-events', [
     {
       id: 'genesis-1',
@@ -1617,6 +1619,22 @@ export default function App() {
   const liveMonthlyExpenses = totalMonthlyBurnRate + eventMonthlyCost;
   const liveMonthlySavings = (totalMonthlyIncome + eventMonthlyIncome) - liveMonthlyExpenses;
 
+  /** Phase 66: preview monthly savings for a hypothetical timeline (e.g. while dragging a node month). */
+  const computeLiveMonthlySavingsForTimeline = useCallback(
+    (events: typeof timelineEvents) => {
+      const evCost = events
+        .filter((e) => e.type === 'event' && e.status !== 'FAILED')
+        .reduce((sum, e) => sum + (Number(e.ongoingCost) || 0), 0);
+      const evInc = events
+        .filter((e) => e.type === 'event' && e.status !== 'FAILED')
+        .reduce((sum, e) => sum + (Number(e.monthlyIncome) || 0), 0);
+      return totalMonthlyIncome + evInc - (totalMonthlyBurnRate + evCost);
+    },
+    [totalMonthlyIncome, totalMonthlyBurnRate]
+  );
+
+  const [dragSavingsPreview, setDragSavingsPreview] = useState<number | null>(null);
+
   /** Weekly time from active-by-month nodes → daily average for Daily Log (distinct from systemConstraints.minSleep). */
   const totalDailyHours = useMemo(() => {
     const totalWeekly = timelineEvents
@@ -1799,6 +1817,9 @@ export default function App() {
     () => simulationData.find((d) => d.month === currentSimulationMonth),
     [simulationData, currentSimulationMonth]
   );
+
+  const canvasCrisisActive =
+    Boolean(simAtCurrentMonth?.isCrisis) || (simAtCurrentMonth?.violations?.length ?? 0) > 0;
 
   const chartData = useMemo(() => {
     return simulationData.map(row => ({
@@ -2252,12 +2273,28 @@ export default function App() {
                   <span
                     className={cn(
                       'font-mono font-bold',
-                      savingsBelowBuffer && 'text-red-600 animate-pulse',
-                      !savingsBelowBuffer && liveMonthlySavings < 0 && 'text-red-600',
-                      !savingsBelowBuffer && liveMonthlySavings >= 0 && 'text-emerald-500'
+                      dragSavingsPreview !== null && 'text-cyan-400 animate-pulse',
+                      dragSavingsPreview === null && savingsBelowBuffer && 'text-red-600 animate-pulse',
+                      dragSavingsPreview === null &&
+                        !savingsBelowBuffer &&
+                        liveMonthlySavings < 0 &&
+                        'text-red-600',
+                      dragSavingsPreview === null &&
+                        !savingsBelowBuffer &&
+                        liveMonthlySavings >= 0 &&
+                        'text-emerald-500'
                     )}
                   >
-                    {formatCurrency(liveMonthlySavings)}
+                    {dragSavingsPreview !== null ? (
+                      <>
+                        {formatCurrency(dragSavingsPreview)}{' '}
+                        <span className="text-[8px] font-headline normal-case tracking-normal opacity-80">
+                          (PREVIEW)
+                        </span>
+                      </>
+                    ) : (
+                      formatCurrency(liveMonthlySavings)
+                    )}
                   </span>
                   <div className="pointer-events-none invisible absolute right-0 top-full z-[60] mt-1 w-max max-w-[240px] rounded-md border-[0.5px] border-outline-variant/30 bg-neutral-950/95 px-2.5 py-1.5 text-[8px] font-headline font-normal normal-case leading-snug tracking-normal text-stone-300 opacity-0 shadow-lg backdrop-blur-md transition-opacity group-hover/msav:visible group-hover/msav:opacity-100">
                     Calculated Yield - Total Burn Rate.
@@ -2357,8 +2394,10 @@ export default function App() {
             </div>
           ) : activeTab === 'Daily Log' ? (
             <DailyLogView
-              nodes={timelineEvents}
               currentSimMonth={currentSimulationMonth}
+              setCurrentSimulationMonth={setCurrentSimulationMonth}
+              targetTimeline={targetTimeline}
+              simulationData={simulationData}
               systemConstraints={systemConstraints}
               requiredSleepHours={sleepTime}
               totalDailyHours={totalDailyHours}
@@ -3804,6 +3843,10 @@ export default function App() {
           setTargetTimeline={handleUpdateTargetTimeline}
           simulationData={simulationData}
           ghostSimulationData={ghostSimulationData}
+          protocolReplayMonth={currentSimulationMonth}
+          canvasCrisisActive={canvasCrisisActive}
+          computeLiveMonthlySavingsForTimeline={computeLiveMonthlySavingsForTimeline}
+          onDragSavingsPreview={setDragSavingsPreview}
           onUpdateEvent={handleUpdateEvent}
           onDeleteEvent={handleDeleteEvent}
           onConnectEvents={handleConnectEvents}
@@ -3849,11 +3892,13 @@ export default function App() {
               const systemStatusColor =
                 criticalAlert || breachCount > 0 ? 'text-[#ef4444]' : 'text-primary';
               const savingsTickerColor =
-                savingsBelowBuffer
-                  ? 'text-[#ef4444] animate-pulse'
-                  : liveMonthlySavings < 0
-                    ? 'text-secondary'
-                    : 'text-primary';
+                dragSavingsPreview !== null
+                  ? 'text-cyan-400 animate-pulse'
+                  : savingsBelowBuffer
+                    ? 'text-[#ef4444] animate-pulse'
+                    : liveMonthlySavings < 0
+                      ? 'text-secondary'
+                      : 'text-primary';
               const objectiveList = timelineEvents.filter((e) => e.type === 'objective');
               const pathAlignmentPct =
                 objectiveList.length === 0
@@ -3890,7 +3935,10 @@ export default function App() {
                 },
                 {
                   label: 'MONTHLY_SAVINGS',
-                  value: `${formatCurrency(liveMonthlySavings)}/MO`,
+                  value:
+                    dragSavingsPreview !== null
+                      ? `${formatCurrency(dragSavingsPreview)}/MO (PREVIEW)`
+                      : `${formatCurrency(liveMonthlySavings)}/MO`,
                   color: savingsTickerColor,
                 },
               ];

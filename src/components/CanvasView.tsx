@@ -1,9 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   ReactFlow,
   MiniMap,
   Controls,
-  Background,
   useNodesState,
   useEdgesState,
   addEdge,
@@ -20,6 +19,9 @@ import {
   EdgeProps,
   useReactFlow,
   ReactFlowProvider,
+  ViewportPortal,
+  Panel,
+  type NodeChange,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Shield, Zap, Target, AlertTriangle, Plus, X, Info, Network, Trash2, TrendingUp, CheckCircle2, Activity, XCircle, Flag, Ghost } from 'lucide-react';
@@ -104,6 +106,7 @@ const SlackEdge = ({
   const isCritical = slack === 0;
   const isLiquidityCrisis = data?.isLiquidityCrisis as boolean || false;
   const pathUnhealthy = Boolean(data?.pathUnhealthy);
+  const highlightSelection = Boolean(data?.highlightSelection);
   const onDeleteEdge = data?.onDeleteEdge as (id: string) => void;
 
   const [isHovered, setIsHovered] = React.useState(false);
@@ -115,19 +118,29 @@ const SlackEdge = ({
         ? '#f87171'
         : isCritical
           ? '#f27d26'
-          : '#4be277';
+          : highlightSelection
+            ? '#5eead4'
+            : '#4be277';
   const strokeWidthResolved =
     style.strokeWidth !== undefined && style.strokeWidth !== null
       ? style.strokeWidth
       : isLiquidityCrisis || pathUnhealthy || isCritical
         ? 3
-        : 2;
+        : highlightSelection
+          ? 4
+          : 2;
   const opacityResolved =
     style.opacity !== undefined && style.opacity !== null
       ? style.opacity
       : pathUnhealthy
         ? 0.55
-        : 0.8;
+        : highlightSelection
+          ? 1
+          : 0.8;
+  const filterResolved =
+    highlightSelection && !pathUnhealthy && !isLiquidityCrisis
+      ? 'drop-shadow(0 0 10px rgba(94,234,212,0.85)) drop-shadow(0 0 4px rgba(74,222,128,0.5))'
+      : undefined;
 
   return (
     <>
@@ -139,6 +152,7 @@ const SlackEdge = ({
           stroke: strokeResolved,
           strokeWidth: strokeWidthResolved,
           opacity: opacityResolved,
+          filter: filterResolved,
         }} 
       />
       <EdgeLabelRenderer>
@@ -284,6 +298,7 @@ type EventNodeData = {
   ghostScenarioActive?: boolean;
   onDelete: () => void;
   mathTooltip?: string;
+  playbackPulse?: boolean;
 };
 type EventNode = Node<EventNodeData, 'event'>;
 
@@ -293,6 +308,9 @@ const EventNode = ({ data, selected }: NodeProps<EventNode>) => (
     "bg-neutral-950/70 border-white/10",
     data?.isBottleneck && data?.errorType === 'UNLINKED' && "ring-2 ring-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)] animate-pulse",
     data?.isBottleneck && data?.errorType === 'BLOCKED_BY_PARENT' && "ring-2 ring-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.5)] animate-pulse",
+    data?.playbackPulse &&
+      !data?.isBottleneck &&
+      "ring-2 ring-primary/80 shadow-[0_0_20px_rgba(74,222,128,0.35)] animate-pulse",
     data?.ghostScenarioActive && "ghost-simulation-node",
     data?.scenario === 'ghost' && "border-dashed border-purple-500/60 opacity-90"
   )}
@@ -592,6 +610,13 @@ interface CanvasViewProps {
   onLogCompleted: (id: string) => void;
   onTraceCriticalPath: () => void;
   ghostMode?: boolean;
+  /** Daily Log / terminal scrub: pulse nodes whose events fire in this sim month. */
+  protocolReplayMonth?: number;
+  /** Phase 66: tactical grid glitch when sim month is in crisis/breach. */
+  canvasCrisisActive?: boolean;
+  /** Live monthly savings for an alternate timeline (drag preview). */
+  computeLiveMonthlySavingsForTimeline?: (events: any[]) => number;
+  onDragSavingsPreview?: (value: number | null) => void;
 }
 
 export default function CanvasView(props: CanvasViewProps) {
@@ -647,9 +672,14 @@ function CanvasInternal({
   onLogCompleted,
   onTraceCriticalPath,
   ghostMode = false,
+  protocolReplayMonth,
+  canvasCrisisActive = false,
+  computeLiveMonthlySavingsForTimeline,
+  onDragSavingsPreview,
 }: CanvasViewProps) {
-  const { screenToFlowPosition, fitView } = useReactFlow();
+  const { screenToFlowPosition, flowToScreenPosition, fitView } = useReactFlow();
   const [draggingNodeId, setDraggingNodeId] = React.useState<string | null>(null);
+  const dragOriginRef = React.useRef<Record<string, { x: number; y: number }>>({});
   const [isAddMenuOpen, setIsAddMenuOpen] = React.useState(false);
   
   const [nodes, setNodes, onNodesChangeInternal] = useNodesState([]);
@@ -728,13 +758,44 @@ function CanvasInternal({
   };
 
   const onNodeDragStart = (_: any, node: Node) => {
+    dragOriginRef.current[node.id] = { ...node.position };
     setDraggingNodeId(node.id);
     onGraphSync?.();
   };
 
+  const onNodesChangeWrapped = useCallback(
+    (changes: NodeChange[]) => {
+      onNodesChangeInternal(changes);
+      if (!computeLiveMonthlySavingsForTimeline || !onDragSavingsPreview) return;
+      for (const c of changes) {
+        if (c.type !== 'position') continue;
+        const pc = c as Extract<NodeChange, { type: 'position' }>;
+        if (!pc.dragging || !pc.position || !pc.id) continue;
+        const eid = pc.id.replace(/^node-/, '');
+        const ev = timelineEvents.find((e) => e.id === eid);
+        if (!ev || ev.type === 'genesis') continue;
+        const previewMonth = Math.max(
+          1,
+          Math.min(targetTimeline, Math.round((pc.position.x - 50) / 300))
+        );
+        const clone = timelineEvents.map((e) => (e.id === eid ? { ...e, month: previewMonth } : e));
+        onDragSavingsPreview(computeLiveMonthlySavingsForTimeline(clone));
+      }
+    },
+    [
+      onNodesChangeInternal,
+      computeLiveMonthlySavingsForTimeline,
+      onDragSavingsPreview,
+      timelineEvents,
+      targetTimeline,
+    ]
+  );
+
   const onNodeDragStopInternal = (_: any, node: Node) => {
+    delete dragOriginRef.current[node.id];
     setDraggingNodeId(null);
-    
+    onDragSavingsPreview?.(null);
+
     // Update global state on drag stop
     const flowNode = nodes.find(n => n.id === node.id);
     if (flowNode && flowNode.id.startsWith('node-')) {
@@ -797,7 +858,19 @@ function CanvasInternal({
       : { nodeIds: [], edgeIds: [] };
 
     const sortedEvents = [...timelineEvents].sort((a, b) => a.month - b.month);
-    
+
+    const replaySourceData =
+      ghostMode && ghostSimulationData && ghostSimulationData.length > 0
+        ? ghostSimulationData
+        : simulationData;
+    const replayRow =
+      protocolReplayMonth != null
+        ? replaySourceData.find((d: any) => d.month === protocolReplayMonth)
+        : undefined;
+    const playbackIds = new Set<string>(
+      ((replayRow?.events as any[]) ?? []).map((ev: any) => ev?.id).filter(Boolean)
+    );
+
     const flowNodes: any[] = [];
     const monthCounts: Record<number, number> = {};
     const bottleneckStatus: Record<string, { isBottleneck: boolean, errorType?: string, deficit?: number }> = {};
@@ -889,6 +962,7 @@ function CanvasInternal({
           isBottleneck,
           errorType,
           mathTooltip: buildEventMathTooltip(event),
+          playbackPulse: playbackIds.has(event.id),
         };
       } else if (event.type === 'objective') {
         const objTargetMonth = event.targetTimeline || 1;
@@ -917,14 +991,22 @@ function CanvasInternal({
         };
       }
 
+      const focusDim = Boolean(selectedNodeId && selectedNodeId !== event.id);
+      const focusSel = Boolean(selectedNodeId === event.id);
+      const criticalPathHidden =
+        showCriticalPath && !criticalPath.nodeIds.includes(nodeId);
+      const baseOpacity = criticalPathHidden ? 0.3 : 1;
+      const nodeOpacity = focusDim ? baseOpacity * 0.55 : baseOpacity;
+
       flowNodes.push({
         id: nodeId,
         type: event.type,
         position,
+        className: cn(focusDim && 'canvas-node-dim', focusSel && 'canvas-node-focus'),
         style: {
           transition: draggingNodeId === nodeId ? 'none' : 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-          zIndex: draggingNodeId === nodeId ? 1000 : 1,
-          opacity: showCriticalPath && !criticalPath.nodeIds.includes(nodeId) ? 0.3 : 1,
+          zIndex: draggingNodeId === nodeId ? 1000 : focusSel ? 50 : 1,
+          opacity: nodeOpacity,
           border: showCriticalPath && criticalPath.nodeIds.includes(nodeId) ? '2px solid #FF4500' : undefined,
           boxShadow: showCriticalPath && criticalPath.nodeIds.includes(nodeId) ? '0 0 15px #FF4500' : undefined,
         },
@@ -968,6 +1050,13 @@ function CanvasInternal({
           (typeof (monthRow as any).Financial === 'number' && (monthRow as any).Financial < 0) ||
           negCashflow;
         const pathGhost = event.scenario === 'ghost' || sourceEvent?.scenario === 'ghost';
+
+        const selectedFullId = selectedNodeId ? `node-${selectedNodeId}` : null;
+        const highlightSelection =
+          Boolean(selectedFullId) &&
+          !isCriticalEdge &&
+          !pathUnhealthy &&
+          (sourceId === selectedFullId || targetId === selectedFullId);
         
         let edgeColor = '#22c55e';
         let edgeStrokeWidth = 2;
@@ -1004,7 +1093,8 @@ function CanvasInternal({
             slack,
             isLiquidityCrisis,
             pathUnhealthy,
-            onDeleteEdge
+            onDeleteEdge,
+            highlightSelection,
           },
           style: isCriticalEdge 
             ? { stroke: '#FF4500', strokeWidth: 4, opacity: showCriticalPath ? 0.1 : 0.95, filter: 'drop-shadow(0 0 5px #FF4500)' }
@@ -1018,7 +1108,76 @@ function CanvasInternal({
     });
 
     return { derivedNodes: flowNodes, derivedEdges: flowEdges };
-  }, [initialHealth, timelineEvents, simulationData, ghostSimulationData, onDeleteEvent, criticalEventIds, targetTimeline, draggingNodeId, onDeleteEdge, showCriticalPath, ghostMode]);
+  }, [
+    initialHealth,
+    timelineEvents,
+    simulationData,
+    ghostSimulationData,
+    onDeleteEvent,
+    criticalEventIds,
+    targetTimeline,
+    draggingNodeId,
+    onDeleteEdge,
+    showCriticalPath,
+    ghostMode,
+    protocolReplayMonth,
+    selectedNodeId,
+  ]);
+
+  const sectorOverlays = useMemo(() => {
+    type Box = { key: string; label: string; minX: number; maxX: number; minY: number; maxY: number };
+    const groups = new Map<string, { ids: string[]; label: string }>();
+
+    for (const e of timelineEvents) {
+      if (e.type === 'genesis') continue;
+      const sid = `node-${e.id}`;
+      const sector = e.lifeSector;
+      if (sector) {
+        const label = `SECTOR: ${sector.toUpperCase()}`;
+        if (!groups.has(sector)) groups.set(sector, { ids: [], label });
+        groups.get(sector)!.ids.push(sid);
+      }
+    }
+
+    const inSector = new Set<string>();
+    for (const g of groups.values()) g.ids.forEach((id) => inSector.add(id));
+
+    const unassigned = nodes.filter((n) => !inSector.has(n.id) && n.type !== 'genesis');
+    const prox = new Map<string, string[]>();
+    for (const n of unassigned) {
+      const bx = Math.round(n.position.x / 400);
+      const by = Math.round(n.position.y / 200);
+      const key = `${bx},${by}`;
+      if (!prox.has(key)) prox.set(key, []);
+      prox.get(key)!.push(n.id);
+    }
+    for (const [key, ids] of prox) {
+      if (ids.length < 2) continue;
+      groups.set(`cluster-${key}`, { ids, label: 'SECTOR: CLUSTER' });
+    }
+
+    const boxes: Box[] = [];
+    const nodeW = 300;
+    const nodeH = 160;
+    const pad = 48;
+
+    for (const [key, g] of groups) {
+      if (g.ids.length < 2) continue;
+      const posList = g.ids.map((id) => nodes.find((n) => n.id === id)).filter(Boolean) as Node[];
+      if (posList.length < 2) continue;
+      const xs = posList.map((n) => n.position.x);
+      const ys = posList.map((n) => n.position.y);
+      boxes.push({
+        key,
+        label: g.label,
+        minX: Math.min(...xs) - pad,
+        maxX: Math.max(...xs) + nodeW + pad,
+        minY: Math.min(...ys) - pad,
+        maxY: Math.max(...ys) + nodeH + pad,
+      });
+    }
+    return boxes;
+  }, [nodes, timelineEvents]);
 
   React.useEffect(() => {
     setNodes(derivedNodes);
@@ -1039,8 +1198,34 @@ function CanvasInternal({
   const selectedEvent = timelineEvents.find(e => e.id === selectedNodeId);
   const systemIdle = timelineEvents.filter((e) => e.type !== 'genesis').length === 0;
 
+  const dragGuide =
+    appState === 'PLANNING' &&
+    draggingNodeId &&
+    dragOriginRef.current[draggingNodeId] &&
+    nodes.find((n) => n.id === draggingNodeId)
+      ? (() => {
+          const n = nodes.find((nn) => nn.id === draggingNodeId)!;
+          const o = dragOriginRef.current[draggingNodeId];
+          const a = flowToScreenPosition({ x: o.x, y: o.y });
+          const b = flowToScreenPosition({ x: n.position.x, y: n.position.y });
+          return { a, b };
+        })()
+      : null;
+
   return (
-    <div className="absolute inset-0 z-0 bg-neutral-950">
+    <div
+      className={cn(
+        'absolute inset-0 z-0 bg-neutral-950',
+        selectedNodeId && 'canvas-focus-mode'
+      )}
+    >
+      <div
+        className={cn(
+          'tactical-coordinate-grid pointer-events-none absolute inset-0 z-[1]',
+          canvasCrisisActive && 'tactical-grid-crisis'
+        )}
+        aria-hidden
+      />
       {ghostMode && (
         <div className="pointer-events-none absolute right-6 top-4 z-[45] flex items-center gap-2 rounded-full border-[0.5px] border-emerald-500/30 bg-neutral-950/80 px-3 py-1.5 shadow-[0_0_12px_rgba(16,185,129,0.15)] backdrop-blur-md">
           <Ghost className="h-3.5 w-3.5 text-emerald-500" aria-hidden />
@@ -1060,11 +1245,12 @@ function CanvasInternal({
         </div>
       )}
       <ReactFlow
+        className="relative z-[2] !bg-transparent"
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
-        onNodesChange={onNodesChangeInternal}
+        onNodesChange={onNodesChangeWrapped}
         onEdgesChange={onEdgesChangeInternal}
         onConnect={onConnect}
         onEdgesDelete={onEdgesDelete}
@@ -1078,17 +1264,77 @@ function CanvasInternal({
         nodesConnectable={appState === 'PLANNING'}
         elementsSelectable={true}
       >
-        <Background variant="dots" color="#353437" gap={20} />
+        <ViewportPortal>
+          {sectorOverlays.map((box) => (
+            <div
+              key={box.key}
+              className="pointer-events-none rounded-2xl border border-white/10 bg-white/[0.04] shadow-[inset_0_0_40px_rgba(255,255,255,0.06)] backdrop-blur-md"
+              style={{
+                position: 'absolute',
+                left: box.minX,
+                top: box.minY,
+                width: box.maxX - box.minX,
+                height: box.maxY - box.minY,
+              }}
+            >
+              <span className="absolute -top-7 left-1 font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-white/45">
+                {box.label}
+              </span>
+            </div>
+          ))}
+        </ViewportPortal>
+
+        {dragGuide && (
+          <svg
+            className="pointer-events-none absolute inset-0 z-[50] overflow-visible"
+            width="100%"
+            height="100%"
+            aria-hidden
+          >
+            <line
+              x1={dragGuide.a.x}
+              y1={dragGuide.a.y}
+              x2={dragGuide.b.x}
+              y2={dragGuide.b.y}
+              stroke="rgba(74, 222, 128, 0.65)"
+              strokeWidth={2}
+              strokeDasharray="6 4"
+            />
+            <rect
+              x={dragGuide.a.x - 140}
+              y={dragGuide.a.y - 40}
+              width={280}
+              height={80}
+              rx={12}
+              fill="rgba(10,10,12,0.35)"
+              stroke="rgba(74,222,128,0.35)"
+              strokeWidth={1}
+            />
+          </svg>
+        )}
+
         <Controls className="bg-surface border border-outline-variant/20 fill-on-surface" />
-        <MiniMap 
-          className="bg-surface border border-outline-variant/20" 
-          nodeColor={(n) => {
-            if (n.type === 'genesis') return '#00ff00';
-            if (n.data.status === 'critical') return '#f27d26';
-            return '#353437';
-          }}
-          maskColor="rgba(14, 14, 16, 0.7)"
-        />
+        <Panel position="bottom-right" className="!m-0 z-40 mb-24 mr-4">
+          <div className="relative h-36 w-36 overflow-hidden rounded-full border border-white/15 bg-neutral-950/90 shadow-[0_0_28px_rgba(0,0,0,0.5)] backdrop-blur-md">
+            <div className="pointer-events-none absolute inset-0 z-10 rounded-full border border-emerald-500/20 shadow-[inset_0_0_20px_rgba(74,222,128,0.08)]" />
+            <MiniMap
+              className="!bg-transparent [&_.react-flow\_\_minimap-mask]:fill-black/65"
+              style={{ width: '100%', height: '100%' }}
+              nodeColor={(n) => {
+                if (n.type === 'genesis') return '#4be277';
+                if ((n.data as any)?.status === 'critical') return '#f27d26';
+                return '#94a3b8';
+              }}
+              maskColor="rgba(14, 14, 16, 0.72)"
+              pannable
+              zoomable
+            />
+            <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary shadow-[0_0_8px_#4be277]" />
+          </div>
+          <p className="mt-1 text-center font-mono text-[8px] font-bold uppercase tracking-widest text-white/40">
+            Radar
+          </p>
+        </Panel>
 
         {/* Undo/Redo Controls */}
         <div className="fixed right-6 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-40">
@@ -1452,6 +1698,24 @@ function CanvasInternal({
                     />
                   </div>
                   <div className="space-y-2">
+                    <label className="text-[9px] font-headline uppercase tracking-widest text-on-surface-variant">Life sector</label>
+                    <select
+                      value={selectedEvent.lifeSector || ''}
+                      onChange={(e) =>
+                        handleUpdateEventInternal(selectedEvent.id, {
+                          lifeSector: (e.target.value || undefined) as 'professional' | 'personal' | 'financial' | undefined,
+                        })
+                      }
+                      disabled={appState !== 'PLANNING'}
+                      className="w-full bg-surface-lowest border border-outline-variant/20 rounded-sm py-2 px-3 text-xs font-headline focus:border-primary focus:ring-0 transition-all disabled:opacity-50"
+                    >
+                      <option value="">— None —</option>
+                      <option value="professional">Professional</option>
+                      <option value="personal">Personal</option>
+                      <option value="financial">Financial</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
                     <label className="text-[9px] font-headline uppercase tracking-widest text-on-surface-variant">Target capital</label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-on-surface-variant">$</span>
@@ -1511,6 +1775,24 @@ function CanvasInternal({
                       className="w-full bg-surface-lowest border border-outline-variant/20 rounded-sm py-2 px-3 text-xs font-headline focus:border-primary focus:ring-0 transition-all disabled:opacity-50 resize-none"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-headline uppercase tracking-widest text-on-surface-variant">Life sector</label>
+                    <select
+                      value={selectedEvent.lifeSector || ''}
+                      onChange={(e) =>
+                        handleUpdateEventInternal(selectedEvent.id, {
+                          lifeSector: (e.target.value || undefined) as 'professional' | 'personal' | 'financial' | undefined,
+                        })
+                      }
+                      disabled={appState !== 'PLANNING'}
+                      className="w-full bg-surface-lowest border border-outline-variant/20 rounded-sm py-2 px-3 text-xs font-headline focus:border-primary focus:ring-0 transition-all disabled:opacity-50"
+                    >
+                      <option value="">— None —</option>
+                      <option value="professional">Professional</option>
+                      <option value="personal">Personal</option>
+                      <option value="financial">Financial</option>
+                    </select>
+                  </div>
                 </div>
               ) : selectedEvent ? (
                 <>
@@ -1535,6 +1817,25 @@ function CanvasInternal({
                       disabled={appState !== 'PLANNING'}
                       className="w-full bg-surface-lowest border border-outline-variant/20 rounded-sm py-2 px-3 text-xs font-headline focus:border-primary focus:ring-0 transition-all disabled:opacity-50"
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-headline uppercase tracking-widest text-on-surface-variant">Life sector</label>
+                    <select
+                      value={selectedEvent.lifeSector || ''}
+                      onChange={(e) =>
+                        handleUpdateEventInternal(selectedEvent.id, {
+                          lifeSector: (e.target.value || undefined) as 'professional' | 'personal' | 'financial' | undefined,
+                        })
+                      }
+                      disabled={appState !== 'PLANNING'}
+                      className="w-full bg-surface-lowest border border-outline-variant/20 rounded-sm py-2 px-3 text-xs font-headline focus:border-primary focus:ring-0 transition-all disabled:opacity-50"
+                    >
+                      <option value="">— None —</option>
+                      <option value="professional">Professional</option>
+                      <option value="personal">Personal</option>
+                      <option value="financial">Financial</option>
+                    </select>
                   </div>
 
                   <div className="space-y-2 mt-4">

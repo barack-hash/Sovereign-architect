@@ -1,9 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-headline: "Space Grotesk", sans-serif;
   --font-sans: "Inter", sans-serif;
+  --font-terminal: "JetBrains Mono", ui-monospace, monospace;
 
   --color-surface-lowest: #0e0e10;
   --color-surface-dim: #131315;
@@ -26,6 +27,36 @@
 }
 
 @layer utilities {
+  .font-terminal {
+    font-family: var(--font-terminal);
+  }
+
+  /** Phase 65: CRT-style scanlines behind content (pointer-events none). */
+  .crt-terminal-scanlines {
+    position: relative;
+    isolation: isolate;
+  }
+  .crt-terminal-scanlines > * {
+    position: relative;
+    z-index: 2;
+  }
+  .crt-terminal-scanlines::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.11),
+      rgba(0, 0, 0, 0.11) 1px,
+      transparent 1px,
+      transparent 4px
+    );
+    opacity: 0.45;
+    mix-blend-mode: multiply;
+  }
+
   .terminal-scroll::-webkit-scrollbar {
     width: 4px;
   }
@@ -184,3 +215,51 @@ input[type='range'].protocol-range-breach::-moz-range-thumb {
   mix-blend-mode: overlay;
 }
 
+/* Phase 66: tactical coordinate grid + crisis glitch; per-node focus (dim via inline opacity + filter here) */
+@keyframes tactical-grid-glitch {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 1;
+    background-position: 0 0;
+  }
+  20% {
+    transform: translate(0.5px, -0.5px);
+    opacity: 0.92;
+    background-position: 1px 0;
+  }
+  40% {
+    transform: translate(-0.5px, 0.5px);
+    opacity: 0.97;
+    background-position: -1px 1px;
+  }
+  60% {
+    transform: translate(0.3px, 0.3px);
+    opacity: 0.94;
+    background-position: 0 -1px;
+  }
+  80% {
+    transform: translate(-0.3px, -0.2px);
+    opacity: 0.98;
+    background-position: 2px 0;
+  }
+}
+
+.tactical-coordinate-grid {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: 0 0;
+}
+
+.tactical-grid-crisis {
+  animation: tactical-grid-glitch 2.8s ease-in-out infinite;
+  will-change: transform, opacity, background-position;
+}
+
+.canvas-node-dim {
+  filter: grayscale(0.35) blur(0.6px);
+}
+
+.canvas-node-focus {
+  filter: none;
+}
