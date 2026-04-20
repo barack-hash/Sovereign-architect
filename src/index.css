@@ -24,9 +24,23 @@
   body {
     @apply bg-surface-lowest text-on-surface font-sans antialiased overflow-hidden;
   }
+
+  /** Phase 71: reduce accidental double-tap zoom on interactive controls */
+  button,
+  [role='button'],
+  input[type='button'],
+  input[type='submit'],
+  input[type='reset'],
+  label[for] {
+    touch-action: manipulation;
+  }
 }
 
 @layer utilities {
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+
   .font-terminal {
     font-family: var(--font-terminal);
   }
@@ -211,6 +225,44 @@
 /* Recharts radar: keep axis labels from hugging the viewport edge beside the sidebar rail */
 .recharts-polar-angle-axis-tick-value {
   dominant-baseline: central;
+}
+
+/* Daily Log: thumb-friendly protocol scrub (mobile-first) */
+input[type='range'].protocol-scrub-slider {
+  height: 1rem;
+  border-radius: 9999px;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.1);
+  accent-color: var(--color-primary);
+}
+input[type='range'].protocol-scrub-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  background: var(--color-primary);
+  border: 2px solid rgba(0, 0, 0, 0.35);
+  box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.35);
+}
+input[type='range'].protocol-scrub-slider::-moz-range-thumb {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  background: var(--color-primary);
+  border: 2px solid rgba(0, 0, 0, 0.35);
+}
+@media (min-width: 768px) {
+  input[type='range'].protocol-scrub-slider {
+    height: 0.5rem;
+  }
+  input[type='range'].protocol-scrub-slider::-webkit-slider-thumb {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+  input[type='range'].protocol-scrub-slider::-moz-range-thumb {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
 }
 
 /* Safety Protocols: range sliders + commit flash */

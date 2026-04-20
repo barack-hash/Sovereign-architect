@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
+/** Desktop / md+ rail. On small viewports, primary nav is the bottom bar + command sheet in `App.tsx` (Phase 72). */
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
@@ -50,7 +51,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       onMouseEnter={() => setIsCollapsed(false)}
       onMouseLeave={() => setIsCollapsed(true)}
       className={cn(
-        "h-full shrink-0 backdrop-blur-xl border-[0.5px] rounded-2xl shadow-[0_20px_80px_rgba(0,0,0,0.08)] flex flex-col py-4 transition-all duration-300 ease-in-out z-40 overflow-hidden",
+        "hidden h-full shrink-0 flex-col py-4 backdrop-blur-xl border-[0.5px] rounded-2xl shadow-[0_20px_80px_rgba(0,0,0,0.08)] transition-all duration-300 ease-in-out z-40 overflow-hidden md:flex",
         "bg-neutral-900/35 border-white/5 border-r-[0.5px] border-r-white/5",
         isCollapsed ? "w-16 items-center" : "w-48"
       )}

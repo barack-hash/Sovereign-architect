@@ -133,7 +133,7 @@ const DailyLogView: React.FC<DailyLogViewProps> = ({
           step={1}
           value={scrubValue}
           onChange={(e) => setCurrentSimulationMonth(Number(e.target.value) || 1)}
-          className="w-full h-2 rounded-full appearance-none cursor-pointer bg-white/10 accent-primary [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary"
+          className="protocol-scrub-slider w-full cursor-pointer touch-manipulation"
         />
       </div>
       <div className="grid grid-cols-1 gap-2 mt-4">
@@ -354,14 +354,14 @@ const DailyLogView: React.FC<DailyLogViewProps> = ({
     >
       <div className="pointer-events-none absolute inset-0 z-0 terminal-data-fog" aria-hidden />
       <div className="relative z-10 mx-auto flex h-full min-h-0 w-full max-w-[1800px] min-w-0 flex-1 flex-col gap-2 px-2 py-3 md:gap-3 md:px-4 md:py-4 lg:gap-4">
-        <div className="grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-3 md:gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] lg:gap-4 xl:gap-5">
-          <aside className="col-span-1 flex min-h-0 min-w-0 flex-col overflow-y-auto terminal-scroll lg:px-1 xl:px-2">
+        <div className="grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-4 md:gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] lg:gap-4 xl:gap-5">
+          <aside className="order-1 col-span-1 flex min-h-0 min-w-0 flex-col overflow-y-auto terminal-scroll lg:px-1 xl:px-2">
             {navMetrics}
           </aside>
-          <main className="col-span-1 min-h-0 min-w-0 overflow-y-auto terminal-scroll lg:px-1 xl:px-2">
+          <main className="order-2 col-span-1 min-h-0 min-w-0 overflow-y-auto terminal-scroll lg:px-1 xl:px-2">
             {chronicleColumn}
           </main>
-          <aside className="col-span-1 min-h-0 min-w-0 overflow-y-auto terminal-scroll lg:px-1 xl:px-2">
+          <aside className="order-3 col-span-1 min-h-0 min-w-0 overflow-y-auto terminal-scroll lg:px-1 xl:px-2">
             {telemetryColumn}
           </aside>
         </div>

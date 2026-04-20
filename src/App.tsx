@@ -23,7 +23,9 @@ import {
   Users,
   Sparkles,
   Heart,
-  X
+  X,
+  LayoutGrid,
+  Menu
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -140,21 +142,21 @@ const CapitalWidget = ({
 }: CapitalWidgetProps) => (
   <div
     className={cn(
-      'bg-surface p-6 border-l-2 border-outline-variant transition-all duration-300 group relative overflow-hidden hover:border-primary/50',
-      'min-w-0 w-full',
+      'bg-surface border-l-2 border-outline-variant transition-all duration-300 group relative overflow-hidden hover:border-primary/50',
+      'min-w-0 w-full p-4 md:p-6',
       pulseVariant === 'optimal' && 'pentagon-pulse-optimal border-primary/25',
       pulseVariant === 'critical' && 'pentagon-pulse-critical border-red-500/40'
     )}
   >
     {alertBanner ? (
-      <div className="mb-2 rounded-sm bg-red-600 py-1 text-center font-mono text-[8px] font-bold uppercase tracking-widest text-white">
+      <div className="mb-2 rounded-sm bg-red-600 py-1 text-center font-mono text-[7px] font-bold uppercase tracking-widest text-white md:text-[8px]">
         {alertBanner}
       </div>
     ) : null}
-    <div className="flex justify-between items-start mb-4">
-      <span className="text-[10px] font-headline uppercase tracking-widest text-on-surface-variant">{label}</span>
+    <div className="mb-3 flex items-start justify-between md:mb-4">
+      <span className="text-xs font-headline uppercase tracking-widest text-on-surface-variant md:text-[10px]">{label}</span>
       <div className={cn(
-        "p-1.5 rounded-sm",
+        "rounded-sm p-1 md:p-1.5",
         color === 'primary' ? "bg-primary/10 text-primary" : 
         color === 'secondary' ? "bg-secondary/10 text-secondary" : 
         color === 'relational' ? "bg-blue-500/10 text-blue-400" :
@@ -165,12 +167,12 @@ const CapitalWidget = ({
       </div>
     </div>
     <div className="space-y-1">
-      <h3 className="text-2xl font-headline font-bold tracking-tight">{value}</h3>
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] text-on-surface-variant uppercase tracking-wider">{subValue}</span>
+      <h3 className="text-lg font-headline font-bold tracking-tight md:text-2xl">{value}</h3>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs uppercase tracking-wider text-on-surface-variant md:text-[10px]">{subValue}</span>
         {trend && (
           <span className={cn(
-            "text-[10px] font-bold flex items-center",
+            "shrink-0 text-xs font-bold md:text-[10px] flex items-center",
             trend.positive ? "text-primary" : "text-secondary"
           )}>
             {trend.positive ? '+' : ''}{trend.value}
@@ -466,6 +468,8 @@ export default function App() {
   const [isGhostMode, setIsGhostMode] = useState(false);
   const [resetMemoryModalOpen, setResetMemoryModalOpen] = useState(false);
   const [commanderDossierOpen, setCommanderDossierOpen] = useState(false);
+  /** Phase 72: mobile command sheet (More menu) */
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const [conservativePathName, setConservativePathName] = useLocalStorage('sovereign-conservative-name', 'Conservative');
   const [aggressivePathName, setAggressivePathName] = useLocalStorage('sovereign-aggressive-name', 'Aggressive');
@@ -1963,6 +1967,20 @@ export default function App() {
   ]);
 
   const isModalView = activeTab === 'Constraints' || activeTab === 'Goals';
+
+  useEffect(() => {
+    if (isModalView) setIsMobileMenuOpen(false);
+  }, [isModalView]);
+
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsMobileMenuOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isMobileMenuOpen]);
+
   const glassPanelClass = 'bg-neutral-900/40 border-[0.5px] border-white/5';
   const glassPanelStrongClass = 'bg-neutral-900/60 border-[0.5px] border-white/5';
   const monthlyNetChange = netChange / (targetTimeline || 1);
@@ -2484,8 +2502,8 @@ export default function App() {
       )}
       </div>
       )}
-      {/* Sidebar */}
-      <div className="absolute left-4 top-4 bottom-4 z-40">
+      {/* Sidebar — md+ only; mobile uses bottom nav */}
+      <div className="absolute left-4 top-4 bottom-4 z-40 hidden md:block">
         <Sidebar 
           activeTab={activeTab} 
           setActiveTab={setActiveTab} 
@@ -2496,6 +2514,194 @@ export default function App() {
           onOpenCommanderDossier={() => setCommanderDossierOpen(true)}
         />
       </div>
+
+      {/* Phase 71–72: mobile bottom navigation + command sheet trigger */}
+      {!isModalView && (
+      <>
+      <nav
+        className="fixed bottom-0 left-0 z-[100] flex h-16 w-full touch-manipulation items-center justify-around border-t border-white/10 bg-neutral-950/80 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-xl md:hidden"
+        aria-label="Primary navigation"
+      >
+        <button
+          type="button"
+          onClick={() => {
+            setIsMobileMenuOpen(false);
+            setActiveTab('Path Simulations');
+            setViewMode('canvas');
+          }}
+          className={cn(
+            'flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1 text-[9px] font-headline uppercase tracking-wider',
+            viewMode === 'canvas' && activeTab === 'Path Simulations' ? 'text-primary' : 'text-on-surface-variant'
+          )}
+        >
+          <LayoutGrid size={22} strokeWidth={1.75} aria-hidden />
+          Canvas
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setIsMobileMenuOpen(false);
+            setActiveTab('Path Simulations');
+            setViewMode('terminal');
+          }}
+          className={cn(
+            'flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1 text-[9px] font-headline uppercase tracking-wider',
+            viewMode === 'terminal' && activeTab === 'Path Simulations' ? 'text-primary' : 'text-on-surface-variant'
+          )}
+        >
+          <Terminal size={22} strokeWidth={1.75} aria-hidden />
+          Terminal
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setIsMobileMenuOpen(false);
+            setActiveTab('Goals');
+          }}
+          className={cn(
+            'flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1 text-[9px] font-headline uppercase tracking-wider',
+            activeTab === 'Goals' ? 'text-primary' : 'text-on-surface-variant'
+          )}
+        >
+          <Target size={22} strokeWidth={1.75} aria-hidden />
+          Goals
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setIsMobileMenuOpen(false);
+            setCommanderDossierOpen(true);
+          }}
+          className="flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1 text-[9px] font-headline uppercase tracking-wider text-on-surface-variant"
+        >
+          <User size={22} strokeWidth={1.75} aria-hidden />
+          Dossier
+        </button>
+        <button
+          type="button"
+          onClick={() => setIsMobileMenuOpen((open) => !open)}
+          aria-expanded={isMobileMenuOpen}
+          aria-controls="mobile-command-sheet"
+          className={cn(
+            'flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1 text-[9px] font-headline uppercase tracking-wider',
+            isMobileMenuOpen ? 'text-primary' : 'text-on-surface-variant'
+          )}
+        >
+          <Menu size={22} strokeWidth={1.75} aria-hidden />
+          More
+        </button>
+      </nav>
+
+      {isMobileMenuOpen ? (
+        <div
+          role="presentation"
+          aria-hidden
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      ) : null}
+
+      <div
+        id="mobile-command-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-hidden={!isMobileMenuOpen}
+        className={cn(
+          'fixed bottom-16 left-0 z-50 w-full transform rounded-t-3xl border-t border-white/10 bg-neutral-900/95 p-6 shadow-[0_-12px_48px_rgba(0,0,0,0.45)] backdrop-blur-3xl transition-transform duration-300 ease-out md:hidden',
+          isMobileMenuOpen ? 'translate-y-0' : 'pointer-events-none translate-y-full'
+        )}
+      >
+        <p className="mb-4 text-center text-[10px] font-headline font-bold uppercase tracking-[0.28em] text-on-surface-variant">
+          Command sheet
+        </p>
+        <div className="flex max-h-[min(70vh,520px)] flex-col gap-2 overflow-y-auto pb-2 terminal-scroll">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('Constraints');
+              setIsMobileMenuOpen(false);
+            }}
+            className={cn(
+              'flex w-full items-center gap-4 rounded-xl border border-transparent px-4 py-4 text-left transition-all touch-manipulation',
+              'text-on-surface hover:border-emerald-500/30 hover:bg-white/5 hover:shadow-[0_0_16px_rgba(74,222,128,0.12)]',
+              'active:border-emerald-500/40 active:bg-emerald-500/10 active:text-primary'
+            )}
+          >
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Lock size={22} strokeWidth={1.75} aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="block font-headline text-sm font-bold uppercase tracking-widest">Constraints</span>
+              <span className="mt-0.5 block text-[11px] text-on-surface-variant">Safety protocols</span>
+            </div>
+            <ChevronRight size={18} className="shrink-0 text-on-surface-variant opacity-50" aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('Settings');
+              setIsMobileMenuOpen(false);
+            }}
+            className={cn(
+              'flex w-full items-center gap-4 rounded-xl border border-transparent px-4 py-4 text-left transition-all touch-manipulation',
+              'text-on-surface hover:border-emerald-500/30 hover:bg-white/5 hover:shadow-[0_0_16px_rgba(74,222,128,0.12)]',
+              'active:border-emerald-500/40 active:bg-emerald-500/10 active:text-primary'
+            )}
+          >
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Settings size={22} strokeWidth={1.75} aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="block font-headline text-sm font-bold uppercase tracking-widest">Settings</span>
+            </div>
+            <ChevronRight size={18} className="shrink-0 text-on-surface-variant opacity-50" aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('Support');
+              setIsMobileMenuOpen(false);
+            }}
+            className={cn(
+              'flex w-full items-center gap-4 rounded-xl border border-transparent px-4 py-4 text-left transition-all touch-manipulation',
+              'text-on-surface hover:border-emerald-500/30 hover:bg-white/5 hover:shadow-[0_0_16px_rgba(74,222,128,0.12)]',
+              'active:border-emerald-500/40 active:bg-emerald-500/10 active:text-primary'
+            )}
+          >
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <HelpCircle size={22} strokeWidth={1.75} aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="block font-headline text-sm font-bold uppercase tracking-widest">Support</span>
+            </div>
+            <ChevronRight size={18} className="shrink-0 text-on-surface-variant opacity-50" aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setViewMode('terminal');
+              setActiveTab('Daily Log');
+              setIsMobileMenuOpen(false);
+            }}
+            className={cn(
+              'flex w-full items-center gap-4 rounded-xl border border-transparent px-4 py-4 text-left transition-all touch-manipulation',
+              'text-on-surface hover:border-emerald-500/30 hover:bg-white/5 hover:shadow-[0_0_16px_rgba(74,222,128,0.12)]',
+              'active:border-emerald-500/40 active:bg-emerald-500/10 active:text-primary'
+            )}
+          >
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <FileText size={22} strokeWidth={1.75} aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="block font-headline text-sm font-bold uppercase tracking-widest">Daily Log</span>
+              <span className="mt-0.5 block text-[11px] text-on-surface-variant">Black box · terminal view</span>
+            </div>
+            <ChevronRight size={18} className="shrink-0 text-on-surface-variant opacity-50" aria-hidden />
+          </button>
+        </div>
+      </div>
+      </>
+      )}
 
       {/* Main Content Area */}
       <div className="pointer-events-auto absolute inset-0 min-w-0 min-h-0 flex flex-col z-0 overflow-hidden">
@@ -2620,19 +2826,19 @@ export default function App() {
         {/* Dashboard Content */}
         <div
           key={`${activeTab}-${viewMode}`}
-          className="absolute inset-0 min-h-0 min-w-0 flex animate-in fade-in overflow-hidden pt-36 pb-16 pl-[4.5rem] md:pl-24 pr-4 md:pr-12 duration-300"
+          className="absolute inset-0 min-h-0 min-w-0 flex animate-in fade-in overflow-hidden pt-28 pb-[calc(4rem+env(safe-area-inset-bottom,0px))] pl-4 pr-4 duration-300 md:pt-36 md:pb-16 md:pl-24 md:pr-12"
         >
           {activeTab === 'Constraints' ? (
-            <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50 p-4 md:p-6">
-              <div className="relative max-w-7xl w-full max-h-[calc(100vh-2rem)] bg-neutral-900/60 border border-white/5 rounded-3xl shadow-2xl backdrop-blur-2xl overflow-hidden">
+            <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-2 backdrop-blur-sm md:p-6">
+              <div className="relative h-[90vh] w-[95vw] max-w-7xl overflow-hidden rounded-2xl border border-white/5 bg-neutral-900/60 shadow-2xl backdrop-blur-2xl md:h-auto md:max-h-[calc(100vh-2rem)] md:w-full md:rounded-3xl">
                 <button
                   type="button"
                   onClick={() => setActiveTab('Path Simulations')}
-                  className="absolute top-4 right-4 z-[60] text-red-500 font-mono text-sm hover:text-red-400"
+                  className="absolute top-4 right-4 z-[120] text-red-500 font-mono text-sm hover:text-red-400"
                 >
                   [ X ]
                 </button>
-                <div className="h-full max-h-[calc(100vh-2rem)] overflow-y-auto">
+                <div className="h-full min-h-0 overflow-y-auto md:max-h-[calc(100vh-2rem)]">
                   <ConstraintsView
                     constraintsActive={activeTab === 'Constraints'}
                     systemConstraints={systemConstraints}
@@ -2667,10 +2873,10 @@ export default function App() {
               />
             </div>
           ) : activeTab === 'Goals' ? (
-            <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50 p-4 md:p-6">
-              <div className="relative max-w-7xl w-full max-h-[calc(100vh-2rem)] bg-neutral-900/80 border-[0.5px] border-white/10 rounded-3xl shadow-2xl backdrop-blur-md overflow-hidden">
-                <button onClick={() => setActiveTab('Path Simulations')} className="absolute top-4 right-4 text-red-600 font-mono text-sm">[ X ]</button>
-                <div className="p-6 md:p-10 h-full max-h-[calc(100vh-2rem)] overflow-y-auto">
+            <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-2 backdrop-blur-sm md:p-6">
+              <div className="relative h-[90vh] w-[95vw] max-w-7xl overflow-hidden rounded-2xl border-[0.5px] border-white/10 bg-neutral-900/80 shadow-2xl backdrop-blur-md md:h-auto md:max-h-[calc(100vh-2rem)] md:w-full md:rounded-3xl">
+                <button onClick={() => setActiveTab('Path Simulations')} className="absolute top-4 right-4 z-[120] text-red-600 font-mono text-sm">[ X ]</button>
+                <div className="h-full min-h-0 overflow-y-auto p-4 md:max-h-[calc(100vh-2rem)] md:p-10">
                   <GoalsView
                     objectives={objectives}
                     simulationData={simulationData}
@@ -2707,7 +2913,7 @@ export default function App() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
+                  className="grid w-full grid-cols-2 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-5"
                 >
                   <CapitalWidget 
                     label="Financial" 
@@ -2788,24 +2994,26 @@ export default function App() {
                       !hasReachableRelationalMaintenance ? 'RED ALERT: NO RELATIONAL MAINTENANCE NODE' : undefined
                     }
                   />
-                  <CapitalWidget 
-                    label="Spiritual" 
-                    value={`${(pentagonSimRow?.Spiritual ?? 0).toFixed(1)}%`} 
-                    subValue="Alignment · maintenance graph" 
-                    icon={<Sparkles size={18} />}
-                    trend={{ value: (pentagonSimRow?.Spiritual ?? 0) > spiritualTripwire ? 'ALIGNED' : 'DRIFT', positive: (pentagonSimRow?.Spiritual ?? 0) > spiritualTripwire }}
-                    color={(pentagonSimRow?.Spiritual ?? 0) > spiritualTripwire ? 'spiritual' : 'secondary'}
-                    pulseVariant={
-                      !hasReachableSpiritualMaintenance || (pentagonSimRow?.Spiritual ?? 0) < spiritualTripwire
-                        ? 'critical'
-                        : (pentagonSimRow?.Spiritual ?? 0) > spiritualTripwire + 15
-                          ? 'optimal'
-                          : 'neutral'
-                    }
-                    alertBanner={
-                      !hasReachableSpiritualMaintenance ? 'RED ALERT: NO SPIRITUAL MAINTENANCE NODE' : undefined
-                    }
-                  />
+                  <div className="col-span-2 min-w-0 xl:col-span-1">
+                    <CapitalWidget 
+                      label="Spiritual" 
+                      value={`${(pentagonSimRow?.Spiritual ?? 0).toFixed(1)}%`} 
+                      subValue="Alignment · maintenance graph" 
+                      icon={<Sparkles size={18} />}
+                      trend={{ value: (pentagonSimRow?.Spiritual ?? 0) > spiritualTripwire ? 'ALIGNED' : 'DRIFT', positive: (pentagonSimRow?.Spiritual ?? 0) > spiritualTripwire }}
+                      color={(pentagonSimRow?.Spiritual ?? 0) > spiritualTripwire ? 'spiritual' : 'secondary'}
+                      pulseVariant={
+                        !hasReachableSpiritualMaintenance || (pentagonSimRow?.Spiritual ?? 0) < spiritualTripwire
+                          ? 'critical'
+                          : (pentagonSimRow?.Spiritual ?? 0) > spiritualTripwire + 15
+                            ? 'optimal'
+                            : 'neutral'
+                      }
+                      alertBanner={
+                        !hasReachableSpiritualMaintenance ? 'RED ALERT: NO SPIRITUAL MAINTENANCE NODE' : undefined
+                      }
+                    />
+                  </div>
                 </motion.div>
               </AnimatePresence>
             </section>
@@ -4196,7 +4404,11 @@ export default function App() {
 
       {/* Bottom Ticker */}
         {!isModalView && (
-        <footer className={cn("absolute bottom-4 left-1/2 -translate-x-1/2 w-[min(94vw,1100px)] h-9 backdrop-blur-md border-[0.5px] rounded-2xl flex items-center overflow-hidden z-[100] shadow-[0_20px_80px_rgba(0,0,0,0.08)]", glassPanelClass)}>
+        <footer className={cn(
+          "absolute left-1/2 z-[100] flex h-9 w-[min(94vw,1100px)] -translate-x-1/2 items-center overflow-hidden rounded-2xl border-[0.5px] backdrop-blur-md shadow-[0_20px_80px_rgba(0,0,0,0.08)]",
+          "bottom-[calc(4.25rem+env(safe-area-inset-bottom,0px))] md:bottom-4",
+          glassPanelClass
+        )}>
             {(() => {
               const breachCount = simAtCurrentMonth?.violations?.length ?? 0;
               const systemStatusValue = criticalAlert

@@ -303,6 +303,7 @@ type EventNodeData = {
 type EventNode = Node<EventNodeData, 'event'>;
 
 const EventNode = ({ data, selected }: NodeProps<EventNode>) => (
+  <div className="touch-manipulation -m-3 p-3">
   <div className={cn(
     "min-w-[280px] backdrop-blur-xl border rounded-2xl p-4 shadow-2xl relative transition-all group",
     "bg-neutral-950/70 border-white/10",
@@ -415,6 +416,7 @@ const EventNode = ({ data, selected }: NodeProps<EventNode>) => (
     )}
     <OmniHandles color={NODE_COLORS.event.border} />
   </div>
+  </div>
 );
 
 type ObjectiveNodeData = { 
@@ -436,6 +438,7 @@ type ObjectiveNodeData = {
 type ObjectiveNode = Node<ObjectiveNodeData, 'objective'>;
 
 const ObjectiveNode = ({ data, selected }: NodeProps<ObjectiveNode>) => (
+  <div className="touch-manipulation -m-3 p-3">
   <div className={cn(
     "group min-w-[280px] backdrop-blur-xl border rounded-2xl p-4 shadow-2xl relative transition-all",
     "bg-neutral-950/70 border-white/10",
@@ -531,6 +534,7 @@ const ObjectiveNode = ({ data, selected }: NodeProps<ObjectiveNode>) => (
       </div>
     )}
     <OmniHandles color={NODE_COLORS.objective.border} />
+  </div>
   </div>
 );
 
@@ -685,6 +689,16 @@ function CanvasInternal({
   const [nodes, setNodes, onNodesChangeInternal] = useNodesState([]);
   const [edges, setEdges, onEdgesChangeInternal] = useEdgesState([]);
   const [showCriticalPath, setShowCriticalPath] = React.useState(false);
+  const [narrowViewport, setNarrowViewport] = React.useState(
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 767.98px)').matches : false
+  );
+  React.useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767.98px)');
+    const onChange = () => setNarrowViewport(mq.matches);
+    onChange();
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
 
   // Sync nodes/edges when timelineEvents or other deps change
   const onConnect = (params: Connection) => {
@@ -1260,9 +1274,10 @@ function CanvasInternal({
         onNodeDragStop={onNodeDragStopInternal}
         isValidConnection={isValidConnection}
         colorMode="dark"
-        panOnScroll={false}
+        panOnScroll={narrowViewport}
         panOnDrag={true}
         zoomOnPinch={true}
+        preventScrolling={false}
         nodesDraggable={appState === 'PLANNING'}
         nodesConnectable={appState === 'PLANNING'}
         elementsSelectable={true}
@@ -1322,7 +1337,7 @@ function CanvasInternal({
         />
         <Panel
           position="bottom-left"
-          className="pointer-events-auto !m-0 z-40 !bottom-28 !left-28 sm:!left-32 flex flex-col items-center"
+          className="pointer-events-auto !m-0 z-40 flex flex-col items-center max-md:!bottom-36 max-md:!left-3 md:!bottom-28 md:!left-28 lg:!left-32"
         >
           <div className="relative h-[128px] w-[128px] max-h-[150px] max-w-[150px] overflow-hidden rounded-full border border-white/15 bg-[rgba(0,0,0,0.5)] shadow-[0_0_24px_rgba(0,0,0,0.45)] backdrop-blur-md">
             <div className="pointer-events-none absolute inset-0 z-10 rounded-full border border-emerald-500/20 shadow-[inset_0_0_16px_rgba(74,222,128,0.06)]" />
