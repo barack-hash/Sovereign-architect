@@ -955,10 +955,16 @@ function CanvasInternal({
   const selectedEvent = timelineEvents.find(e => e.id === selectedNodeId);
 
   return (
-    <div className="absolute inset-0 z-0 bg-[#0e0e10]">
+    <div className={cn(
+      "absolute inset-0 z-0",
+      theme === 'light' ? "bg-stone-100" : "bg-neutral-950"
+    )}>
       {nodes.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-          <div className="bg-neutral-900/40 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 flex flex-col items-center max-w-md text-center shadow-2xl pointer-events-auto">
+          <div className={cn(
+            "backdrop-blur-xl border-[0.5px] rounded-3xl p-8 flex flex-col items-center max-w-md text-center shadow-[0_20px_80px_rgba(0,0,0,0.08)] pointer-events-auto",
+            theme === 'light' ? "bg-white/60 border-red-900/10 shadow-red-900/5 text-stone-900" : "bg-neutral-900/40 border-white/10"
+          )}>
             <h2 className="text-xl font-semibold mb-2">Welcome to your Life Architecture</h2>
             <p className="text-white/60 text-sm mb-6">Your canvas is completely blank. Click the <span className="text-primary font-mono bg-primary/10 px-1 py-0.5 rounded">[ + NEW STRATEGY ]</span> button at the top to map your first timeline.</p>
           </div>
@@ -1001,7 +1007,8 @@ function CanvasInternal({
             onClick={undo}
             disabled={!canUndo}
             className={cn(
-              "px-4 py-2 rounded-full bg-neutral-900/40 backdrop-blur-md border border-white/10 text-[10px] font-headline font-bold uppercase tracking-widest transition-all active:scale-95",
+              "px-3 py-1.5 rounded-xl backdrop-blur-xl border-[0.5px] text-[9px] font-headline font-bold uppercase tracking-[0.2em] transition-all active:scale-95",
+              theme === 'light' ? "bg-white/60 border-red-900/10 shadow-red-900/5" : "bg-neutral-900/40 border-white/10",
               canUndo ? "text-primary hover:bg-white/10" : "text-on-surface-variant opacity-30 cursor-not-allowed"
             )}
           >
@@ -1011,7 +1018,8 @@ function CanvasInternal({
             onClick={redo}
             disabled={!canRedo}
             className={cn(
-              "px-4 py-2 rounded-full bg-neutral-900/40 backdrop-blur-md border border-white/10 text-[10px] font-headline font-bold uppercase tracking-widest transition-all active:scale-95",
+              "px-3 py-1.5 rounded-xl backdrop-blur-xl border-[0.5px] text-[9px] font-headline font-bold uppercase tracking-[0.2em] transition-all active:scale-95",
+              theme === 'light' ? "bg-white/60 border-red-900/10 shadow-red-900/5" : "bg-neutral-900/40 border-white/10",
               canRedo ? "text-primary hover:bg-white/10" : "text-on-surface-variant opacity-30 cursor-not-allowed"
             )}
           >
@@ -1023,10 +1031,11 @@ function CanvasInternal({
               onTraceCriticalPath();
             }}
             className={cn(
-              "px-4 py-2 rounded-full backdrop-blur-md border border-white/10 text-[10px] font-headline font-bold uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2",
+              "px-3 py-1.5 rounded-xl backdrop-blur-xl border-[0.5px] text-[9px] font-headline font-bold uppercase tracking-[0.2em] transition-all active:scale-95 flex items-center gap-2",
+              theme === 'light' ? "border-red-900/10 shadow-red-900/5" : "border-white/10",
               showCriticalPath 
                 ? "bg-secondary text-surface-lowest border-secondary animate-pulse shadow-[0_0_10px_#FF4500]" 
-                : "bg-neutral-900/40 text-on-surface-variant hover:bg-white/10"
+                : (theme === 'light' ? "bg-white/60 text-on-surface-variant hover:bg-white/80" : "bg-neutral-900/40 text-on-surface-variant hover:bg-white/10")
             )}
           >
             <Activity size={12} />
@@ -1034,7 +1043,10 @@ function CanvasInternal({
           </button>
           <button
             onClick={onTidyGrid}
-            className="px-4 py-2 rounded-full bg-neutral-900/40 backdrop-blur-md border border-white/10 text-[10px] font-headline font-bold uppercase tracking-widest transition-all active:scale-95 text-primary hover:bg-white/10"
+            className={cn(
+              "px-3 py-1.5 rounded-xl backdrop-blur-xl border-[0.5px] text-[9px] font-headline font-bold uppercase tracking-[0.2em] transition-all active:scale-95 text-primary hover:bg-white/10",
+              theme === 'light' ? "bg-white/60 border-red-900/10 shadow-red-900/5" : "bg-neutral-900/40 border-white/10"
+            )}
           >
             [ TIDY GRID ]
           </button>
@@ -1050,7 +1062,10 @@ function CanvasInternal({
                 initial={{ opacity: 0, y: 20, scale: 0.9 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 20, scale: 0.9 }}
-                className="flex flex-col gap-2 bg-neutral-900/40 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 shadow-2xl"
+                className={cn(
+                  "flex flex-col gap-2 backdrop-blur-xl border-[0.5px] rounded-2xl p-2 shadow-[0_20px_80px_rgba(0,0,0,0.08)]",
+                  theme === 'light' ? "bg-white/60 border-red-900/10 shadow-red-900/5" : "bg-neutral-900/40 border-white/10"
+                )}
               >
                 <button
                   onClick={() => handleAddSpecificNode('genesis')}
@@ -1082,13 +1097,18 @@ function CanvasInternal({
           <button 
             onClick={handleAddNode}
             className={cn(
-              "w-14 h-14 bg-primary text-black rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform group",
-              isAddMenuOpen && "rotate-45 bg-neutral-900/40 backdrop-blur-2xl border border-white/10 text-primary"
+              "w-12 h-12 bg-primary text-black rounded-xl shadow-[0_20px_80px_rgba(0,0,0,0.08)] flex items-center justify-center hover:scale-105 transition-transform group",
+              isAddMenuOpen && (theme === 'light'
+                ? "rotate-45 bg-white/60 backdrop-blur-xl border-[0.5px] border-red-900/10 shadow-red-900/5 text-primary"
+                : "rotate-45 bg-neutral-900/40 backdrop-blur-xl border-[0.5px] border-white/10 text-primary")
             )}
           >
             <Plus size={24} />
             {!isAddMenuOpen && (
-              <span className="absolute right-16 bg-neutral-900/40 backdrop-blur-2xl border border-white/10 rounded-xl px-3 py-2 text-[10px] font-headline uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+              <span className={cn(
+                "absolute right-14 backdrop-blur-xl border-[0.5px] rounded-xl px-3 py-2 text-[9px] font-headline uppercase tracking-[0.2em] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap",
+                theme === 'light' ? "bg-white/60 border-red-900/10 shadow-red-900/5 text-stone-900" : "bg-neutral-900/40 border-white/10"
+              )}>
                 Inject Event
               </span>
             )}
@@ -1103,7 +1123,10 @@ function CanvasInternal({
             initial={{ x: 400 }}
             animate={{ x: 0 }}
             exit={{ x: 400 }}
-            className="absolute top-4 right-4 bottom-4 w-80 bg-neutral-900/40 backdrop-blur-2xl border border-white/10 rounded-3xl z-30 shadow-2xl flex flex-col overflow-hidden"
+            className={cn(
+              "absolute top-4 right-4 bottom-4 w-80 backdrop-blur-xl border-[0.5px] rounded-3xl z-30 shadow-[0_20px_80px_rgba(0,0,0,0.08)] flex flex-col overflow-hidden",
+              theme === 'light' ? "bg-white/60 border-red-900/10 shadow-red-900/5" : "bg-neutral-900/40 border-white/10"
+            )}
           >
             <div className="p-6 border-b border-outline-variant/10 flex justify-between items-center">
               <div className="flex items-center gap-2">

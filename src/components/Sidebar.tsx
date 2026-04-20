@@ -28,7 +28,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onImport,
   theme
 }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   const navItems = [
     { label: 'Goals', icon: <Target size={18} /> },
@@ -39,32 +39,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside 
+      onMouseEnter={() => setIsCollapsed(false)}
+      onMouseLeave={() => setIsCollapsed(true)}
       className={cn(
-        "h-full shrink-0 backdrop-blur-2xl border rounded-3xl shadow-2xl flex flex-col py-8 transition-all duration-300 ease-in-out z-40 overflow-hidden",
-        theme === 'light' ? "bg-white/60 border-red-900/20 shadow-red-900/5" : "bg-neutral-900/40 border-white/10",
-        isCollapsed ? "w-20 items-center" : "w-64"
+        "h-full shrink-0 backdrop-blur-xl border-[0.5px] rounded-2xl shadow-[0_20px_80px_rgba(0,0,0,0.08)] flex flex-col py-4 transition-all duration-300 ease-in-out z-40 overflow-hidden",
+        theme === 'light' ? "bg-white/55 border-red-900/10 shadow-red-900/5" : "bg-neutral-900/35 border-white/5",
+        isCollapsed ? "w-16 items-center" : "w-48"
       )}
     >
       <div className={cn(
-        "px-8 mb-12 flex items-center justify-between w-full",
-        isCollapsed && "px-0 justify-center"
+        "px-3 mb-6 flex items-center justify-between w-full",
+        isCollapsed && "px-0 justify-center mb-4"
       )}>
         {!isCollapsed && (
           <div>
-            <h1 className="text-primary font-bold tracking-tighter text-2xl font-headline">SOVEREIGN</h1>
-            <p className="font-headline uppercase tracking-[0.2em] text-[10px] text-on-surface-variant mt-1">Deterministic Life Strategy</p>
+            <h1 className="text-primary font-bold tracking-tighter text-lg font-headline">SOVEREIGN</h1>
+            <p className="font-headline uppercase tracking-[0.22em] text-[9px] text-on-surface-variant mt-0.5">Life Strategy</p>
           </div>
         )}
-        <button 
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className={cn(
-            "p-1 text-[10px] font-mono font-bold border border-outline-variant/20 rounded-sm hover:bg-surface-container transition-colors text-on-surface-variant hover:text-primary",
-            isCollapsed ? "" : "ml-2"
-          )}
-          title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-        >
-          {isCollapsed ? "[ > ]" : "[ < ]"}
-        </button>
+        <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-[10px] font-mono font-bold border border-primary/20">
+          S
+        </div>
       </div>
 
       <nav className="flex-1 space-y-1 w-full">
@@ -73,11 +68,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             key={item.label}
             onClick={() => setActiveTab(item.label)}
             className={cn(
-              "flex items-center transition-all duration-200 group relative mx-2 rounded-xl",
-              isCollapsed ? "justify-center px-0 py-4 w-[calc(100%-16px)]" : "px-6 py-4 w-[calc(100%-16px)]",
+              "flex items-center transition-all duration-200 group relative mx-2 rounded-xl border border-transparent",
+              isCollapsed ? "justify-center px-0 py-3 w-[calc(100%-16px)]" : "px-4 py-3 w-[calc(100%-16px)]",
               activeTab === item.label 
-                ? "text-primary bg-white/10" 
-                : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
+                ? "text-primary bg-white/10 border-primary/20" 
+                : "text-on-surface-variant hover:text-on-surface hover:bg-white/5 hover:border-white/10"
             )}
             title={isCollapsed ? item.label : undefined}
           >
@@ -88,36 +83,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
               )} />
             )}
             <span className={cn(!isCollapsed && "mr-4")}>{item.icon}</span>
-            {!isCollapsed && <span className="font-headline tracking-tight text-sm">{item.label}</span>}
+            {!isCollapsed && <span className="font-headline tracking-wide text-xs uppercase">{item.label}</span>}
           </button>
         ))}
       </nav>
 
       <div className={cn(
-        "pt-8 mt-auto border-t border-outline-variant/10 space-y-2 w-full",
+        "pt-4 mt-auto border-t border-outline-variant/10 space-y-1 w-full",
         isCollapsed ? "px-2" : "px-8"
       )}>
         <div className="flex flex-col gap-2 mb-4 mx-2">
           <button 
             onClick={onExport}
             className={cn(
-              "flex items-center text-[10px] font-headline uppercase tracking-widest hover:bg-white/5 transition-all text-on-surface-variant hover:text-on-surface rounded-xl",
+              "flex items-center text-[9px] font-headline uppercase tracking-[0.2em] hover:bg-white/5 transition-all text-on-surface-variant hover:text-on-surface rounded-xl border border-transparent hover:border-white/10",
               isCollapsed ? "justify-center p-3" : "px-4 py-3 w-full"
             )}
             title={isCollapsed ? "Export Path" : undefined}
           >
             <ArrowUpRight size={14} className={cn(!isCollapsed && "mr-3")} /> 
-            {!isCollapsed && "Export Path (.JSON)"}
+            {!isCollapsed && "Export Json"}
           </button>
           <label 
             className={cn(
-              "flex items-center text-[10px] font-headline uppercase tracking-widest hover:bg-white/5 transition-all text-on-surface-variant hover:text-on-surface cursor-pointer rounded-xl",
+              "flex items-center text-[9px] font-headline uppercase tracking-[0.2em] hover:bg-white/5 transition-all text-on-surface-variant hover:text-on-surface cursor-pointer rounded-xl border border-transparent hover:border-white/10",
               isCollapsed ? "justify-center p-3" : "px-4 py-3 w-full"
             )}
             title={isCollapsed ? "Import Path" : undefined}
           >
             <TrendingUp size={14} className={cn(!isCollapsed && "mr-3")} /> 
-            {!isCollapsed && "Import Path"}
+            {!isCollapsed && "Import Json"}
             <input type="file" accept=".json" className="hidden" onChange={onImport} />
           </label>
         </div>
@@ -125,7 +120,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <button 
           onClick={() => setActiveTab('Settings')}
           className={cn(
-            "flex items-center w-[calc(100%-16px)] mx-2 py-3 transition-colors text-sm font-headline rounded-xl",
+            "flex items-center w-[calc(100%-16px)] mx-2 py-2.5 transition-colors text-sm font-headline rounded-xl",
             isCollapsed ? "justify-center" : "px-4",
             activeTab === 'Settings' ? "text-primary bg-white/10" : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
           )}
@@ -137,7 +132,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <button 
           onClick={() => setActiveTab('Support')}
           className={cn(
-            "flex items-center w-[calc(100%-16px)] mx-2 py-3 transition-colors text-sm font-headline rounded-xl",
+            "flex items-center w-[calc(100%-16px)] mx-2 py-2.5 transition-colors text-sm font-headline rounded-xl",
             isCollapsed ? "justify-center" : "px-4",
             activeTab === 'Support' ? "text-primary bg-white/10" : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
           )}
@@ -148,7 +143,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </button>
         
         <div className={cn(
-          "mt-8 p-3 bg-surface-container rounded-sm flex items-center gap-3",
+          "mt-5 p-2.5 bg-surface-container rounded-lg flex items-center gap-3 border border-white/5",
           isCollapsed && "p-1 justify-center"
         )}>
           <div className="w-10 h-10 bg-surface-highest rounded-sm flex items-center justify-center text-on-surface-variant shrink-0">

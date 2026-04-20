@@ -1707,7 +1707,7 @@ export default function App() {
         </div>
       ) : (
         <div className={cn(
-          "relative h-screen w-screen overflow-hidden font-sans p-4 flex gap-4",
+          "relative h-screen w-screen overflow-hidden font-sans",
           theme === 'light' ? 'bg-stone-100 text-stone-900' : 'bg-neutral-950 text-white'
         )}>
       {chaosReport && (
@@ -1739,42 +1739,44 @@ export default function App() {
         </div>
       )}
       {/* Sidebar */}
-      <Sidebar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        onExport={handleExport} 
-        onImport={handleImport} 
-        theme={theme}
-      />
+      <div className="absolute left-4 top-4 bottom-4 z-40">
+        <Sidebar 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab} 
+          onExport={handleExport} 
+          onImport={handleImport} 
+          theme={theme}
+        />
+      </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 min-w-0 min-h-0 flex flex-col z-0 overflow-hidden">
+      <div className="absolute inset-0 min-w-0 min-h-0 flex flex-col z-0 overflow-hidden">
         <div className="flex flex-col min-h-0 h-full">
           {/* Header */}
-            <header className={cn("backdrop-blur-2xl border rounded-2xl shadow-2xl px-6 py-3 flex justify-between items-center z-40 gap-4", glassPanelClass)}>
-          <div className="flex items-center gap-4 flex-1 min-w-[300px]">
-            <div className="flex items-center bg-white/5 px-4 py-2 rounded-xl border border-white/10 flex-1 max-w-80 group focus-within:border-primary/50 transition-all">
+            <header className={cn("absolute top-4 left-1/2 -translate-x-1/2 w-[min(94vw,1100px)] backdrop-blur-xl border-[0.5px] rounded-2xl shadow-[0_20px_80px_rgba(0,0,0,0.08)] px-4 py-2.5 flex justify-between items-center z-40 gap-3", glassPanelClass)}>
+          <div className="flex items-center gap-3 flex-1 min-w-[260px]">
+            <div className="flex items-center bg-white/5 px-3 py-1.5 rounded-xl border border-white/10 flex-1 max-w-72 group focus-within:border-primary/50 transition-all">
               <Search size={14} className="text-on-surface-variant group-focus-within:text-primary transition-colors" />
               <input 
                 type="text" 
                 placeholder="QUERY PARAMETERS..." 
-                className="bg-transparent border-none focus:ring-0 text-[10px] font-headline tracking-widest uppercase w-full placeholder:text-on-surface-variant/50 ml-3"
+                className="bg-transparent border-none focus:ring-0 text-[9px] font-headline tracking-[0.2em] uppercase w-full placeholder:text-on-surface-variant/50 ml-2"
               />
             </div>
             {isTripwireTriggered && (
               <motion.div 
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="flex items-center gap-2 px-3 py-1 bg-secondary/10 border border-secondary/30 text-secondary animate-pulse"
+                  className="flex items-center gap-2 px-2.5 py-1 bg-secondary/10 border border-secondary/20 text-secondary animate-pulse rounded-lg"
               >
                 <AlertTriangle size={12} />
-                <span className="text-[9px] font-mono font-bold uppercase tracking-tighter">TRIPWIRE_BREACH: {primaryVulnerability.label}</span>
+                <span className="text-[8px] font-mono font-bold uppercase tracking-[0.18em]">TRIPWIRE: {primaryVulnerability.label}</span>
               </motion.div>
             )}
           </div>
 
-          <div className="flex items-center gap-4 flex-wrap justify-end">
-            <div className="hidden sm:flex items-center gap-2 px-4 py-1.5 bg-surface-container border border-outline-variant/10 rounded-sm">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-surface-container border-[0.5px] border-outline-variant/10 rounded-lg">
               <div className="relative group cursor-help flex items-center gap-1">
                 <span className="text-[10px] font-headline tracking-tighter text-on-surface-variant uppercase">Monthly Expenses:</span>
                 <span className="text-white/30 text-[10px] ml-1">(?)</span>
@@ -1789,7 +1791,7 @@ export default function App() {
                 {formatCurrency(totalMonthlyBurnRate)}/MO
               </span>
             </div>
-            <div className="hidden md:flex items-center gap-2 px-4 py-1.5 bg-surface-container border border-outline-variant/10 rounded-sm">
+            <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-surface-container border-[0.5px] border-outline-variant/10 rounded-lg">
               <div className="relative group cursor-help flex items-center gap-1">
                 <span className="text-[10px] font-headline tracking-tighter text-on-surface-variant uppercase">Monthly Savings:</span>
                 <span className="text-white/30 text-[10px] ml-1">(?)</span>
@@ -1806,7 +1808,7 @@ export default function App() {
             </div>
 
             {/* What-If Yield Slider */}
-            <div className="hidden lg:flex flex-col items-center justify-center border-l border-white/10 pl-4 ml-4">
+            <div className="hidden lg:flex flex-col items-center justify-center border-l border-white/10 pl-3 ml-1">
               <div className="relative group cursor-help flex items-center gap-1">
                 <span className="text-[9px] font-mono text-primary/70 uppercase tracking-widest mb-1">
                   SAVINGS TWEAK: {((yieldMultiplier - 1) * 100).toFixed(0)}%
@@ -1829,7 +1831,7 @@ export default function App() {
             
             {/* SYSTEM ALARM WIDGET */}
             <div className={cn(
-              "hidden lg:flex items-center gap-2 px-4 py-1.5 border rounded-sm transition-all duration-300",
+              "hidden lg:flex items-center gap-2 px-3 py-1 border-[0.5px] rounded-lg transition-all duration-300",
               (simulationData[currentSimulationMonth]?.violations?.length || 0) > 0
                 ? "bg-red-900/20 border-red-500/50 text-red-400 animate-pulse"
                 : "bg-emerald-900/20 border-emerald-500/30 text-emerald-400"
@@ -1846,52 +1848,52 @@ export default function App() {
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}
-                  className="flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/30 rounded-sm"
+                className="flex items-center gap-2 px-2.5 py-1 bg-primary/10 border border-primary/20 rounded-lg"
                 >
                   <CheckCircle2 size={12} className="text-primary" />
                   <span className="text-[9px] font-headline font-bold text-primary uppercase tracking-widest">Auto-Saved</span>
                 </motion.div>
               )}
             </AnimatePresence>
-            <div className="hidden lg:flex items-center gap-2 px-4 py-1.5 bg-surface-container border border-outline-variant/10 rounded-sm">
+            <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-surface-container border-[0.5px] border-outline-variant/10 rounded-lg">
               <span className={cn("w-2 h-2 rounded-full bg-primary", isCalculating ? "animate-ping" : "animate-pulse")} />
               <span className="text-[10px] font-headline tracking-tighter text-on-surface-variant uppercase">
                 {isCalculating ? "Processing..." : "Engine Online"}
               </span>
             </div>
-            <div className="flex gap-3 items-center">
+            <div className="flex gap-2 items-center">
               <button 
                 onClick={handleResetStrategy}
-                className="px-5 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold tracking-wide backdrop-blur-md transition-all text-secondary"
+                className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border-[0.5px] border-white/10 text-[10px] font-semibold tracking-[0.16em] uppercase backdrop-blur-md transition-all text-secondary"
               >
-                [ + NEW STRATEGY ]
+                [ NEW ]
               </button>
               <button 
                 onClick={runChaosSimulation}
                 disabled={isSimulating}
                 className={cn(
-                  "px-5 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold tracking-wide backdrop-blur-md transition-all disabled:opacity-50",
+                  "px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border-[0.5px] border-white/10 text-[10px] font-semibold tracking-[0.16em] uppercase backdrop-blur-md transition-all disabled:opacity-50",
                   isSimulating && "animate-pulse"
                 )}
               >
-                {isSimulating ? "Simulating..." : "Simulate"}
+                {isSimulating ? "SIM..." : "SIM"}
               </button>
               <button 
                 onClick={toggleProtocol}
                 className={cn(
-                  "px-5 py-2 rounded-full border border-white/10 text-xs font-semibold tracking-wide backdrop-blur-md transition-all",
+                  "px-3 py-1.5 rounded-xl border-[0.5px] border-white/10 text-[10px] font-semibold tracking-[0.16em] uppercase backdrop-blur-md transition-all",
                   appState === 'PLANNING' 
                     ? "bg-primary text-black hover:bg-primary/90" 
                     : "bg-secondary text-black hover:bg-secondary/90 animate-pulse"
                 )}
               >
-                {appState === 'PLANNING' ? "[ EXECUTE ]" : "[ ABORT PROTOCOL ]"}
+                {appState === 'PLANNING' ? "[ RUN ]" : "[ ABORT ]"}
               </button>
-              <button onClick={handleLock} className="px-5 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold tracking-wide backdrop-blur-md transition-all text-red-500 ml-4">[ LOCK TERMINAL ]</button>
+              <button onClick={handleLock} className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border-[0.5px] border-white/10 text-[10px] font-semibold tracking-[0.16em] uppercase backdrop-blur-md transition-all text-red-500 ml-1">[ LOCK ]</button>
               <div className="relative group cursor-help flex items-center gap-1">
                 <button 
                   onClick={() => setIsGhostMode(!isGhostMode)} 
-                  className={`px-5 py-2 rounded-full border border-white/10 text-xs font-semibold tracking-wide backdrop-blur-md transition-all ml-4 ${isGhostMode ? 'text-purple-500 bg-purple-500/10 border-purple-500/50' : 'text-white/50 bg-white/5 hover:bg-white/10'}`}
+                  className={`px-3 py-1.5 rounded-xl border-[0.5px] border-white/10 text-[10px] font-semibold tracking-[0.16em] uppercase backdrop-blur-md transition-all ml-1 ${isGhostMode ? 'text-purple-500 bg-purple-500/10 border-purple-500/50' : 'text-white/50 bg-white/5 hover:bg-white/10'}`}
                 >
                   {isGhostMode ? '[ SCENARIO PLANNER: ON ]' : '[ SCENARIO PLANNER: OFF ]'}
                 </button>
@@ -1902,7 +1904,7 @@ export default function App() {
               <button
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                 className={cn(
-                  "px-5 py-2 rounded-full border text-xs font-semibold tracking-wide backdrop-blur-md transition-all ml-2",
+                  "px-3 py-1.5 rounded-xl border-[0.5px] text-[10px] font-semibold tracking-[0.16em] uppercase backdrop-blur-md transition-all ml-1",
                   theme === 'light'
                     ? "bg-white/60 border-red-900/20 shadow-red-900/5 text-red-900 hover:bg-white/80"
                     : "bg-white/5 hover:bg-white/10 border-white/10 text-white/80"
@@ -1911,7 +1913,7 @@ export default function App() {
                 [ THEME: {theme.toUpperCase()} ]
               </button>
             </div>
-            <div className="flex gap-4 ml-2 border-l border-outline-variant/20 pl-6">
+            <div className="flex gap-3 ml-1 border-l border-outline-variant/20 pl-3">
               <Bell size={18} className="text-on-surface-variant cursor-pointer hover:text-primary transition-colors" />
               <div className="w-8 h-8 rounded-full bg-surface-highest flex items-center justify-center cursor-pointer hover:border hover:border-primary/50 transition-all">
                 <User size={16} />
@@ -1922,7 +1924,7 @@ export default function App() {
 
         {/* Tabbed Navigation */}
         {activeTab === 'Path Simulations' && (
-          <div className={cn("mt-4 self-start z-40 flex backdrop-blur-2xl border rounded-full px-2 py-1 shadow-2xl", glassPanelClass)}>
+          <div className={cn("absolute top-20 left-1/2 -translate-x-1/2 z-40 flex backdrop-blur-xl border-[0.5px] rounded-2xl px-1.5 py-1 shadow-[0_20px_80px_rgba(0,0,0,0.08)]", glassPanelClass)}>
             <button 
               onClick={() => setViewMode('terminal')}
               className={cn(
@@ -1947,7 +1949,7 @@ export default function App() {
         )}
 
         {/* Dashboard Content */}
-        <div className="flex-1 min-h-0 min-w-0 flex overflow-hidden mt-4">
+        <div className="absolute inset-0 min-h-0 min-w-0 flex overflow-hidden pt-28 pb-16 px-4">
           {activeTab === 'Constraints' ? (
             <ConstraintsView systemConstraints={systemConstraints} setSystemConstraints={setSystemConstraints} />
           ) : activeTab === 'Daily Log' ? (
@@ -3352,7 +3354,7 @@ export default function App() {
       </div>
 
       {/* Bottom Ticker */}
-        <footer className={cn("mt-4 h-10 backdrop-blur-2xl border rounded-full flex items-center overflow-hidden z-20 shadow-2xl", glassPanelClass)}>
+        <footer className={cn("absolute bottom-4 left-1/2 -translate-x-1/2 w-[min(94vw,1100px)] h-9 backdrop-blur-xl border-[0.5px] rounded-2xl flex items-center overflow-hidden z-20 shadow-[0_20px_80px_rgba(0,0,0,0.08)]", glassPanelClass)}>
           <div className="flex items-center gap-12 px-6 whitespace-nowrap animate-marquee">
             {[
               { label: 'NET WORTH', value: formatCurrency(projectedNetWorth), color: 'text-primary' },
