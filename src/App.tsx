@@ -44,6 +44,7 @@ import {
   PolarRadiusAxis
 } from 'recharts';
 import { cn } from './lib/utils';
+import { buildTenYearNwFromSim } from './lib/nwTrajectoryFromSim';
 import CanvasView from './components/CanvasView';
 import ConstraintsView from './components/ConstraintsView';
 import DailyLogView from './components/DailyLogView';
@@ -1236,7 +1237,12 @@ export default function App() {
   }, [recordHistory, getCurrentCanvasState]);
 
   // 2. The Sequential Math Engine
-  const calculateSimulationData = (mods = { costMod: 1, burnMod: 1, yieldMod: 1 }, scenarioType: 'primary' | 'ghost' = 'primary') => {
+  const calculateSimulationData = (
+    mods = { costMod: 1, burnMod: 1, yieldMod: 1 },
+    scenarioType: 'primary' | 'ghost' = 'primary',
+    constraintOverride?: typeof systemConstraints
+  ) => {
+    const sc = constraintOverride ?? systemConstraints;
     const scenarioEvents = timelineEvents.filter(e => scenarioType === 'ghost' ? true : e.scenario !== 'ghost');
     const activeGenesis = scenarioEvents.find(e => e.type === 'genesis' && e.isActiveGenesis) || scenarioEvents.find(e => e.type === 'genesis');
     
@@ -1547,10 +1553,10 @@ export default function App() {
       }
 
       const monthViolations: string[] = [];
-      if (systemConstraints.minCash > 0 && currentNW < systemConstraints.minCash) {
+      if (sc.minCash > 0 && currentNW < sc.minCash) {
         monthViolations.push("Emergency Fund Breach");
       }
-      if (systemConstraints.maxBurn > 0 && modifiedBurnRate > systemConstraints.maxBurn) {
+      if (sc.maxBurn > 0 && modifiedBurnRate > sc.maxBurn) {
         monthViolations.push("Burn Rate Exceeded");
       }
 
@@ -1689,6 +1695,38 @@ export default function App() {
     disruptionImpact, currentSimulationMonth, dailyTelemetry, relationalTripwire,
     effectiveMonthlyDegradation, isHalal, systemConstraints, yieldMultiplier
   ]);
+
+  const computeTenYearSeriesForConstraints = useCallback(
+    (c: typeof systemConstraints) => {
+      const rows = calculateSimulationData({ costMod: 1, burnMod: 1, yieldMod: 1 }, 'primary', c);
+      return buildTenYearNwFromSim(rows, targetTimeline, monthlyYield, liveMonthlySavings);
+    },
+    [
+      currentCash,
+      currentDebt,
+      initialSystemHealth,
+      targetTimeline,
+      timelineEvents,
+      baseMonthlyIncome,
+      monthlyYield,
+      totalMonthlyBurnRate,
+      inflationImpact,
+      disruptionImpact,
+      currentSimulationMonth,
+      dailyTelemetry,
+      relationalTripwire,
+      effectiveMonthlyDegradation,
+      isHalal,
+      yieldMultiplier,
+      liveMonthlySavings,
+      systemConstraints,
+    ]
+  );
+
+  const baselineTenYearSeries = useMemo(
+    () => computeTenYearSeriesForConstraints(systemConstraints),
+    [computeTenYearSeriesForConstraints, systemConstraints]
+  );
 
   const toggleProtocol = () => {
     if (appState === 'PLANNING') {
@@ -2292,10 +2330,28 @@ export default function App() {
         >
           {activeTab === 'Constraints' ? (
             <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50 p-4">
-              <div className="relative max-w-2xl w-full max-h-[calc(100vh-2rem)] bg-neutral-900/80 border-[0.5px] border-white/10 rounded-3xl shadow-2xl backdrop-blur-md overflow-hidden">
-                <button onClick={() => setActiveTab('Path Simulations')} className="absolute top-4 right-4 text-red-600 font-mono text-sm">[ X ]</button>
+              <div className="relative max-w-4xl w-full max-h-[calc(100vh-2rem)] bg-neutral-900/60 border border-white/5 rounded-3xl shadow-2xl backdrop-blur-2xl overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('Path Simulations')}
+                  className="absolute top-4 right-4 z-[60] text-red-500 font-mono text-sm hover:text-red-400"
+                >
+                  [ X ]
+                </button>
                 <div className="h-full max-h-[calc(100vh-2rem)] overflow-y-auto">
-                  <ConstraintsView systemConstraints={systemConstraints} setSystemConstraints={setSystemConstraints} />
+                  <ConstraintsView
+                    constraintsActive={activeTab === 'Constraints'}
+                    systemConstraints={systemConstraints}
+                    setSystemConstraints={setSystemConstraints}
+                    baselineTenYearSeries={baselineTenYearSeries}
+                    computeTenYearSeriesForConstraints={computeTenYearSeriesForConstraints}
+                    projectedNetWorth={projectedNetWorth}
+                    liveMonthlyExpenses={liveMonthlyExpenses}
+                    liveMonthlySavings={liveMonthlySavings}
+                    totalDailyHours={totalDailyHours}
+                    initialNetWorth={initialNetWorth}
+                    onCommitProtocols={() => setCalculationKey((k) => k + 1)}
+                  />
                 </div>
               </div>
             </div>

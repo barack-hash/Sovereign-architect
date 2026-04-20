@@ -132,3 +132,55 @@
   animation: mission-blood-pulse 1.15s ease-in-out infinite;
 }
 
+/* Safety Protocols: range sliders + commit flash */
+input[type='range'].protocol-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, #faf8f5, #c4c2b8);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 12px rgba(245, 245, 240, 0.22);
+  cursor: grab;
+}
+
+input[type='range'].protocol-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, #faf8f5, #c4c2b8);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 12px rgba(245, 245, 240, 0.22);
+  cursor: grab;
+}
+
+input[type='range'].protocol-range-breach::-webkit-slider-thumb {
+  animation: mission-blood-pulse 1.15s ease-in-out infinite;
+  background: #dc2626;
+  border-color: rgba(127, 29, 29, 0.85);
+}
+
+input[type='range'].protocol-range-breach::-moz-range-thumb {
+  animation: mission-blood-pulse 1.15s ease-in-out infinite;
+  background: #dc2626;
+  border-color: rgba(127, 29, 29, 0.85);
+}
+
+@keyframes protocol-shutter-flash {
+  0% {
+    opacity: 0;
+  }
+  32% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.protocol-shutter-flash {
+  animation: protocol-shutter-flash 0.52s ease-out forwards;
+  mix-blend-mode: overlay;
+}
+
