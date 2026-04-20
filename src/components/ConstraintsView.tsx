@@ -274,7 +274,7 @@ const ConstraintsView: React.FC<ConstraintsViewProps> = ({
   };
 
   return (
-    <div className="relative min-h-[320px] p-6 md:p-8">
+    <div className="relative min-h-[320px] w-full max-w-none p-6 md:p-8 lg:px-12">
       <div
         className="pointer-events-none absolute inset-0 z-0 flex flex-col justify-end opacity-20 pb-4 px-4"
         aria-hidden

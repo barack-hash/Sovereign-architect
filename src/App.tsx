@@ -141,6 +141,7 @@ const CapitalWidget = ({
   <div
     className={cn(
       'bg-surface p-5 border-l-2 border-outline-variant transition-all duration-300 group relative overflow-hidden hover:border-primary/50',
+      'min-w-0 w-full flex-1 md:basis-0',
       pulseVariant === 'optimal' && 'pentagon-pulse-optimal border-primary/25',
       pulseVariant === 'critical' && 'pentagon-pulse-critical border-red-500/40'
     )}
@@ -2619,11 +2620,11 @@ export default function App() {
         {/* Dashboard Content */}
         <div
           key={`${activeTab}-${viewMode}`}
-          className="absolute inset-0 min-h-0 min-w-0 flex animate-in fade-in overflow-hidden pt-36 pb-16 pl-24 pr-6 duration-300"
+          className="absolute inset-0 min-h-0 min-w-0 flex animate-in fade-in overflow-hidden pt-36 pb-16 pl-[4.5rem] md:pl-24 pr-4 md:pr-12 duration-300"
         >
           {activeTab === 'Constraints' ? (
-            <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50 p-4">
-              <div className="relative max-w-4xl w-full max-h-[calc(100vh-2rem)] bg-neutral-900/60 border border-white/5 rounded-3xl shadow-2xl backdrop-blur-2xl overflow-hidden">
+            <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50 p-4 md:p-6">
+              <div className="relative max-w-7xl w-full max-h-[calc(100vh-2rem)] bg-neutral-900/60 border border-white/5 rounded-3xl shadow-2xl backdrop-blur-2xl overflow-hidden">
                 <button
                   type="button"
                   onClick={() => setActiveTab('Path Simulations')}
@@ -2649,7 +2650,7 @@ export default function App() {
               </div>
             </div>
           ) : activeTab === 'Daily Log' ? (
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col">
               <DailyLogView
                 currentSimMonth={currentSimulationMonth}
                 setCurrentSimulationMonth={setCurrentSimulationMonth}
@@ -2666,10 +2667,10 @@ export default function App() {
               />
             </div>
           ) : activeTab === 'Goals' ? (
-            <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50 p-4">
-              <div className="relative max-w-2xl w-full max-h-[calc(100vh-2rem)] bg-neutral-900/80 border-[0.5px] border-white/10 rounded-3xl shadow-2xl backdrop-blur-md overflow-hidden">
+            <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50 p-4 md:p-6">
+              <div className="relative max-w-7xl w-full max-h-[calc(100vh-2rem)] bg-neutral-900/80 border-[0.5px] border-white/10 rounded-3xl shadow-2xl backdrop-blur-md overflow-hidden">
                 <button onClick={() => setActiveTab('Path Simulations')} className="absolute top-4 right-4 text-red-600 font-mono text-sm">[ X ]</button>
-                <div className="p-8 h-full max-h-[calc(100vh-2rem)] overflow-y-auto">
+                <div className="p-6 md:p-10 h-full max-h-[calc(100vh-2rem)] overflow-y-auto">
                   <GoalsView
                     objectives={objectives}
                     simulationData={simulationData}
@@ -2685,7 +2686,7 @@ export default function App() {
             <SupportView />
           ) : viewMode === 'terminal' ? (
             <>
-              <div className="flex-1 w-full max-w-6xl mx-auto overflow-y-auto terminal-scroll p-8 pr-[20rem] space-y-10">
+              <div className="flex-1 w-full max-w-none min-w-0 overflow-y-auto terminal-scroll px-4 md:px-12 py-8 pr-6 md:pr-[22rem] space-y-10">
             {/* Pentagon of Capital Header */}
             <section>
               <div className="flex items-center justify-between mb-6">
@@ -2706,7 +2707,7 @@ export default function App() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="grid grid-cols-1 md:grid-cols-5 gap-4"
+                  className="flex w-full flex-col gap-4 md:flex-row md:items-stretch"
                 >
                   <CapitalWidget 
                     label="Financial" 
@@ -3604,14 +3605,14 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="overflow-x-auto terminal-scroll pb-4">
-                <div className="flex gap-4 min-w-max">
+              <div className="terminal-scroll pb-4">
+                <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
                   {pathMilestones.map((milestone) => {
                     const rowDegraded = milestone.emotional < healthRedline;
                     const showBreach = milestone.breached || rowDegraded;
                     return (
                     <div key={milestone.month} className={cn(
-                      "w-56 bg-surface-lowest border p-4 font-mono text-[10px] transition-colors",
+                      "min-w-0 w-full bg-surface-lowest border p-4 font-mono text-[10px] transition-colors",
                       showBreach ? "border-secondary/30 bg-secondary/5" : "border-outline-variant/10"
                     )}>
                       <div className="flex justify-between items-center mb-3 border-b border-outline-variant/10 pb-2">
@@ -3672,7 +3673,7 @@ export default function App() {
                     </div>
                   );})}
                   {monthsToTarget === -1 && (
-                    <div className="flex-1 flex items-center justify-center p-8 border border-dashed border-secondary/30 text-secondary font-mono text-xs uppercase tracking-widest">
+                    <div className="col-span-full flex min-h-[8rem] items-center justify-center p-8 border border-dashed border-secondary/30 text-secondary font-mono text-xs uppercase tracking-widest">
                       <AlertTriangle size={16} className="mr-3" />
                       Critical Path Blocked: Insufficient Growth Velocity
                     </div>

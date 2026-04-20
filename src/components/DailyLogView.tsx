@@ -353,15 +353,15 @@ const DailyLogView: React.FC<DailyLogViewProps> = ({
       )}
     >
       <div className="pointer-events-none absolute inset-0 z-0 terminal-data-fog" aria-hidden />
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col gap-3 p-3 lg:gap-4 lg:p-4">
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-3">
-          <aside className="col-span-1 flex min-h-0 flex-col overflow-y-auto terminal-scroll px-1 lg:col-span-3 lg:px-2">
+      <div className="relative z-10 flex h-full min-h-0 w-full min-w-0 flex-1 flex-col gap-2 px-2 py-3 md:gap-3 md:px-4 md:py-4 lg:gap-4">
+        <div className="grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-3 md:gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] lg:gap-4 xl:gap-5">
+          <aside className="col-span-1 flex min-h-0 min-w-0 flex-col overflow-y-auto terminal-scroll lg:px-1 xl:px-2">
             {navMetrics}
           </aside>
-          <main className="col-span-1 min-h-0 min-w-0 overflow-y-auto terminal-scroll px-1 lg:col-span-6 lg:px-2">
+          <main className="col-span-1 min-h-0 min-w-0 overflow-y-auto terminal-scroll lg:px-1 xl:px-2">
             {chronicleColumn}
           </main>
-          <aside className="col-span-1 min-h-0 overflow-y-auto terminal-scroll px-1 lg:col-span-3 lg:px-2">
+          <aside className="col-span-1 min-h-0 min-w-0 overflow-y-auto terminal-scroll lg:px-1 xl:px-2">
             {telemetryColumn}
           </aside>
         </div>

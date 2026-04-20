@@ -60,7 +60,7 @@ export const GoalsView: React.FC<GoalsViewProps> = ({
   const failMonth = useMemo(() => firstFailureMonth(simulationData), [simulationData]);
 
   return (
-    <div className="flex-1 overflow-y-auto terminal-scroll p-8 space-y-10">
+    <div className="w-full max-w-none flex-1 overflow-y-auto terminal-scroll space-y-10 px-1 py-2 md:px-2">
       <section>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xs font-headline font-bold uppercase tracking-[0.3em] text-on-surface-variant">
@@ -79,7 +79,7 @@ export const GoalsView: React.FC<GoalsViewProps> = ({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {objectives.map((node) => {
               const title = node?.name || 'Untitled objective';
               const targetMonth = Math.max(1, Number(node?.month || node?.targetTimeline) || 1);
