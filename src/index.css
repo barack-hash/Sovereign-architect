@@ -163,6 +163,51 @@
   animation: mission-blood-pulse 1.15s ease-in-out infinite;
 }
 
+/* Phase 69: Pentagon capital cards — emerald breathe vs red jitter */
+@keyframes pentagon-breathe {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(74, 222, 128, 0.25),
+      0 0 16px rgba(16, 185, 129, 0.12);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(74, 222, 128, 0.45),
+      0 0 22px rgba(16, 185, 129, 0.22);
+  }
+}
+
+@keyframes pentagon-jitter {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    box-shadow:
+      0 0 0 1px rgba(239, 68, 68, 0.35),
+      0 0 12px rgba(220, 38, 38, 0.15);
+  }
+  25% {
+    transform: translate(0.5px, -0.5px);
+  }
+  50% {
+    transform: translate(-0.5px, 0.5px);
+    box-shadow:
+      0 0 0 1px rgba(239, 68, 68, 0.5),
+      0 0 18px rgba(220, 38, 38, 0.22);
+  }
+  75% {
+    transform: translate(0.4px, 0.3px);
+  }
+}
+
+.pentagon-pulse-optimal {
+  animation: pentagon-breathe 3.2s ease-in-out infinite;
+}
+
+.pentagon-pulse-critical {
+  animation: pentagon-jitter 0.85s ease-in-out infinite;
+}
+
 /* Safety Protocols: range sliders + commit flash */
 input[type='range'].protocol-range::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -262,4 +307,34 @@ input[type='range'].protocol-range-breach::-moz-range-thumb {
 
 .canvas-node-focus {
   filter: none;
+}
+
+/* Daily Log / terminal: subtle matrix-style data fog (behind content, pointer-events none) */
+@keyframes terminal-fog-drift {
+  0% {
+    background-position: 0 0, 0 0;
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    background-position: 80px 40px, -60px 30px;
+    opacity: 0.45;
+  }
+}
+
+.terminal-data-fog-host .terminal-data-fog {
+  background-image:
+    linear-gradient(rgba(74, 222, 128, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(74, 222, 128, 0.04) 1px, transparent 1px),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(16, 185, 129, 0.03) 2px,
+      rgba(16, 185, 129, 0.03) 3px
+    );
+  background-size: 48px 48px, 48px 48px, 100% 100%;
+  animation: terminal-fog-drift 22s ease-in-out infinite;
 }

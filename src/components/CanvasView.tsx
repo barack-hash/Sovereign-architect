@@ -1327,7 +1327,7 @@ function CanvasInternal({
           <div className="relative h-[128px] w-[128px] max-h-[150px] max-w-[150px] overflow-hidden rounded-full border border-white/15 bg-[rgba(0,0,0,0.5)] shadow-[0_0_24px_rgba(0,0,0,0.45)] backdrop-blur-md">
             <div className="pointer-events-none absolute inset-0 z-10 rounded-full border border-emerald-500/20 shadow-[inset_0_0_16px_rgba(74,222,128,0.06)]" />
             <MiniMap
-              className="!bg-transparent [&_.react-flow\_\_minimap]:!bg-transparent [&_.react-flow\_\_minimap-mask]:fill-black/60"
+              className="!bg-transparent [&_.react-flow\_\_minimap]:!bg-transparent [&_.react-flow\_\_minimap-mask]:fill-black/50"
               style={{ width: '100%', height: '100%' }}
               nodeColor={(n) => {
                 if ((n.data as any)?.status === 'critical') return '#f27d26';
@@ -1337,9 +1337,10 @@ function CanvasInternal({
                 if (n.type === 'note') return '#eab308';
                 return '#94a3b8';
               }}
-              maskColor="rgba(14, 14, 16, 0.65)"
-              pannable
-              zoomable
+              nodeStrokeWidth={3}
+              maskColor="rgba(14, 14, 16, 0.55)"
+              pannable={true}
+              zoomable={true}
               aria-label="Canvas radar minimap"
             />
             <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary shadow-[0_0_8px_#4be277]" />

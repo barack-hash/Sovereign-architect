@@ -13,7 +13,6 @@ import {
   Shield,
   Zap,
   Clock,
-  Hourglass,
   Activity,
   ArrowUpRight,
   AlertTriangle,
@@ -85,6 +84,8 @@ interface CapitalWidgetProps {
   icon: React.ReactNode;
   trend?: { value: string; positive: boolean };
   color: 'primary' | 'secondary' | 'neutral' | 'relational' | 'spiritual';
+  pulseVariant?: 'optimal' | 'critical' | 'neutral';
+  alertBanner?: string;
 }
 
 interface SimulationCardProps {
@@ -127,8 +128,28 @@ const normalizeToDaily = (value: number, freq: string) => {
 
 // --- Components ---
 
-const CapitalWidget = ({ label, value, subValue, icon, trend, color }: CapitalWidgetProps) => (
-  <div className="bg-surface p-5 border-l-2 border-outline-variant hover:border-primary/50 transition-all duration-300 group">
+const CapitalWidget = ({
+  label,
+  value,
+  subValue,
+  icon,
+  trend,
+  color,
+  pulseVariant = 'neutral',
+  alertBanner,
+}: CapitalWidgetProps) => (
+  <div
+    className={cn(
+      'bg-surface p-5 border-l-2 border-outline-variant transition-all duration-300 group relative overflow-hidden hover:border-primary/50',
+      pulseVariant === 'optimal' && 'pentagon-pulse-optimal border-primary/25',
+      pulseVariant === 'critical' && 'pentagon-pulse-critical border-red-500/40'
+    )}
+  >
+    {alertBanner ? (
+      <div className="mb-2 rounded-sm bg-red-600 py-1 text-center font-mono text-[8px] font-bold uppercase tracking-widest text-white">
+        {alertBanner}
+      </div>
+    ) : null}
     <div className="flex justify-between items-start mb-4">
       <span className="text-[10px] font-headline uppercase tracking-widest text-on-surface-variant">{label}</span>
       <div className={cn(
@@ -317,6 +338,53 @@ function findFirstSimulationIssue(simulationData: any[]) {
   });
 }
 
+const SPIRITUAL_MAINTENANCE_RE = /salah|prayer|spiritual|mosque|maghrib|fajr|ibadah|dhikr/i;
+const RELATIONAL_MAINTENANCE_RE = /family|spouse|children|visit|obligation|parents|kin/i;
+
+function getReachableTimelineNodeIds(
+  events: { id: string; type: string; dependencies: (string | { id: string })[] }[]
+): Set<string> {
+  const genesis =
+    events.find((e) => e.type === 'genesis' && (e as { isActiveGenesis?: boolean }).isActiveGenesis) ||
+    events.find((e) => e.type === 'genesis');
+  if (!genesis) return new Set();
+  const reachable = new Set<string>([genesis.id]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    events.forEach((e) => {
+      if (reachable.has(e.id)) return;
+      const hasDep = e.dependencies.some((d) => {
+        const id = typeof d === 'string' ? d : d.id;
+        return reachable.has(id);
+      });
+      if (hasDep) {
+        reachable.add(e.id);
+        changed = true;
+      }
+    });
+  }
+  return reachable;
+}
+
+/** Arlington / DC genesis defaults: Metro/Bikeshare burn + daily commute time. */
+const ARLINGTON_GENESIS_LEDGER: {
+  id: string;
+  label: string;
+  type: 'Income' | 'Expense' | 'Time Use' | 'Impact';
+  value: number;
+  frequency?: string;
+  relationalImpact: number;
+  spiritualImpact: number;
+}[] = [
+  { id: '1', label: 'Primary Income (NoVA / DC corridor)', type: 'Income', value: 8500, relationalImpact: 0, spiritualImpact: 0 },
+  { id: '2', label: 'Base Living (Arlington)', type: 'Expense', value: 3500, relationalImpact: 0, spiritualImpact: 0 },
+  { id: '3', label: 'Capital Bikeshare / Metro', type: 'Expense', value: 72, frequency: 'Monthly', relationalImpact: 0, spiritualImpact: 0 },
+  { id: '4', label: 'Sleep', type: 'Time Use', value: 7, relationalImpact: 0, spiritualImpact: 0 },
+  { id: '5', label: 'Work Hours', type: 'Time Use', value: 8, relationalImpact: 0, spiritualImpact: 0 },
+  { id: '6', label: 'Commute (Metro / Uber)', type: 'Time Use', value: 1, frequency: 'Daily', relationalImpact: 0, spiritualImpact: 0 },
+];
+
 // --- Main App ---
 
 export default function App() {
@@ -451,6 +519,10 @@ export default function App() {
 
   const [yieldMultiplier, setYieldMultiplier] = useState(1.0);
 
+  useEffect(() => {
+    setYieldMultiplier(activePath === 'aggressive' ? 1.15 : 1.0);
+  }, [activePath]);
+
   // Timeline Events
   const [timelineEvents, setTimelineEvents] = useLocalStorage<{
     id: string;
@@ -478,6 +550,9 @@ export default function App() {
     initialSystemHealth?: number;
     initialRelationalHarmony?: number;
     initialSpiritualAlignment?: number;
+    /** Phase 69: Arlington / DC contextual defaults */
+    commuteHoursPerDay?: number;
+    transitMonthlyUSD?: number;
     // Objective specific
     targetCapital?: number;
     targetTimeline?: number;
@@ -489,7 +564,7 @@ export default function App() {
     {
       id: 'genesis-1',
       type: 'genesis',
-      name: 'Genesis Alpha',
+      name: 'Genesis · Arlington / DC',
       month: 0,
       initialCash: 150000,
       initialDebt: 7500,
@@ -505,16 +580,13 @@ export default function App() {
       spiritualImpact: 0,
       dependencies: [],
       status: 'COMPLETED',
-      baselineLedger: [
-        { id: '1', label: 'Primary Income', type: 'Income', value: 8500, relationalImpact: 0, spiritualImpact: 0 },
-        { id: '2', label: 'Base Living Expenses', type: 'Expense', value: 3500, relationalImpact: 0, spiritualImpact: 0 },
-        { id: '3', label: 'Sleep', type: 'Time Use', value: 7, relationalImpact: 0, spiritualImpact: 0 },
-        { id: '4', label: 'Work Hours', type: 'Time Use', value: 8, relationalImpact: 0, spiritualImpact: 0 },
-      ],
+      commuteHoursPerDay: 1,
+      transitMonthlyUSD: 72,
+      baselineLedger: [...ARLINGTON_GENESIS_LEDGER],
       initialSystemHealth: 80,
       initialRelationalHarmony: 70,
-      initialSpiritualAlignment: 60
-    }
+      initialSpiritualAlignment: 60,
+    },
   ]);
   const [dailyTimeBudget, setDailyTimeBudget] = useLocalStorage<number>('sovereign-daily-time-budget', 24);
   const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(null);
@@ -596,7 +668,7 @@ export default function App() {
       {
         id: 'genesis-1',
         type: 'genesis',
-        name: 'Genesis Alpha',
+        name: 'Genesis · Arlington / DC',
         month: 0,
         initialCash: 150000,
         initialDebt: 7500,
@@ -611,11 +683,10 @@ export default function App() {
         spiritualImpact: 0,
         dependencies: [],
         status: 'COMPLETED',
-        baselineLedger: [
-          { id: '1', label: 'Base Salary', type: 'Income', value: 8500, frequency: 'Monthly', relationalImpact: 0, spiritualImpact: 0 },
-          { id: '2', label: 'Living Expenses', type: 'Expense', value: 4500, frequency: 'Monthly', relationalImpact: 0, spiritualImpact: 0 }
-        ]
-      }
+        commuteHoursPerDay: 1,
+        transitMonthlyUSD: 72,
+        baselineLedger: [...ARLINGTON_GENESIS_LEDGER],
+      },
     ]);
     setObjectiveDependencies([]);
     setSelectedNodeId('genesis-1');
@@ -629,7 +700,7 @@ export default function App() {
       {
         id: 'genesis-1',
         type: 'genesis',
-        name: 'Genesis Alpha',
+        name: 'Genesis · Arlington / DC',
         month: 0,
         initialCash: 150000,
         initialDebt: 7500,
@@ -645,12 +716,9 @@ export default function App() {
         spiritualImpact: 0,
         dependencies: [],
         status: 'COMPLETED',
-        baselineLedger: [
-          { id: '1', label: 'Primary Income', type: 'Income', value: 8500, relationalImpact: 0, spiritualImpact: 0 },
-          { id: '2', label: 'Base Living Expenses', type: 'Expense', value: 3500, relationalImpact: 0, spiritualImpact: 0 },
-          { id: '3', label: 'Sleep', type: 'Time Use', value: 7, relationalImpact: 0, spiritualImpact: 0 },
-          { id: '4', label: 'Work Hours', type: 'Time Use', value: 8, relationalImpact: 0, spiritualImpact: 0 },
-        ],
+        commuteHoursPerDay: 1,
+        transitMonthlyUSD: 72,
+        baselineLedger: [...ARLINGTON_GENESIS_LEDGER],
         initialSystemHealth: 80,
         initialRelationalHarmony: 70,
         initialSpiritualAlignment: 60,
@@ -1820,6 +1888,33 @@ export default function App() {
     [simulationData, currentSimulationMonth]
   );
 
+  const reachableTimelineIds = useMemo(
+    () => getReachableTimelineNodeIds(timelineEvents as Parameters<typeof getReachableTimelineNodeIds>[0]),
+    [timelineEvents]
+  );
+
+  const hasReachableSpiritualMaintenance = useMemo(
+    () =>
+      timelineEvents.some(
+        (e) =>
+          reachableTimelineIds.has(e.id) &&
+          e.type === 'event' &&
+          SPIRITUAL_MAINTENANCE_RE.test(e.name)
+      ),
+    [timelineEvents, reachableTimelineIds]
+  );
+
+  const hasReachableRelationalMaintenance = useMemo(
+    () =>
+      timelineEvents.some(
+        (e) =>
+          reachableTimelineIds.has(e.id) &&
+          e.type === 'event' &&
+          RELATIONAL_MAINTENANCE_RE.test(e.name)
+      ),
+    [timelineEvents, reachableTimelineIds]
+  );
+
   const canvasCrisisActive =
     Boolean(simAtCurrentMonth?.isCrisis) || (simAtCurrentMonth?.violations?.length ?? 0) > 0;
 
@@ -1909,12 +2004,86 @@ export default function App() {
     return { label: "NOMINAL OPERATIONS", risk: "LOW", protocol: "MAINTAIN CURRENT TRAJECTORY" };
   })();
 
-  // Generate Critical Path Milestones
-  const pathMilestones = simulationData.slice(1).map(d => ({
-    month: d.month,
-    financial: d.Financial,
-    emotional: d.Emotional,
-  }));
+  // Tactical Critical Path: 12-month window from current sim month → breach if crisis / violations / negative NW / negative event cashflow
+  const pathMilestones = useMemo(() => {
+    const start = Math.max(1, Math.min(currentSimulationMonth, targetTimeline));
+    const end = Math.min(targetTimeline, currentSimulationMonth + 11);
+    const out: { month: number; financial: number; emotional: number; breached: boolean }[] = [];
+    for (let m = start; m <= end; m++) {
+      const d = simulationData.find((row) => row.month === m);
+      if (!d) continue;
+      const breached =
+        d.isCrisis === true ||
+        (typeof d.Financial === 'number' && d.Financial < 0) ||
+        (Array.isArray(d.violations) && d.violations.length > 0) ||
+        (Array.isArray(d.events) &&
+          d.events.some(
+            (ev: { monthlyIncome?: number; ongoingCost?: number }) =>
+              Number(ev.monthlyIncome || 0) - Number(ev.ongoingCost || 0) < 0
+          ));
+      out.push({
+        month: m,
+        financial: d.Financial,
+        emotional: d.Emotional,
+        breached,
+      });
+    }
+    return out;
+  }, [simulationData, currentSimulationMonth, targetTimeline]);
+
+  const tacticalWindowBreached = pathMilestones.some((m) => m.breached);
+
+  const pentagonSimRow = useMemo(() => {
+    const m =
+      currentSimulationMonth < 1
+        ? 1
+        : Math.min(currentSimulationMonth, targetTimeline);
+    return simulationData.find((d) => d.month === m) ?? null;
+  }, [simulationData, currentSimulationMonth, targetTimeline]);
+
+  const pentagonUnallocated = useMemo(() => {
+    if (typeof pentagonSimRow?.unallocatedTime === 'number') return pentagonSimRow.unallocatedTime;
+    return Math.max(0, dailyTimeBudget - totalAllocatedTimeBase + totalReclaimedTime);
+  }, [pentagonSimRow, dailyTimeBudget, totalAllocatedTimeBase, totalReclaimedTime]);
+
+  const pentagonTemporalHours =
+    Math.max(0, dailyTimeBudget - pentagonUnallocated) * (activePath === 'aggressive' ? 1.08 : 1);
+
+  const pentagonEventLaborStress = useMemo(() => {
+    const evs = pentagonSimRow?.events ?? [];
+    return (evs as { ongoingCost?: number; weeklyHours?: number; immediateCost?: number }[]).reduce(
+      (acc, ev) =>
+        acc +
+        Math.min(40, (Number(ev.ongoingCost) || 0) / 220) +
+        (Number(ev.weeklyHours) || 0) * 1.4 +
+        Math.min(18, (Number(ev.immediateCost) || 0) / 1800),
+      0
+    );
+  }, [pentagonSimRow]);
+
+  const pentagonSyncLabel = useMemo(() => {
+    const fin = pentagonSimRow?.Financial;
+    const emo = typeof pentagonSimRow?.Emotional === 'number' ? pentagonSimRow.Emotional : 100;
+    const bad =
+      criticalAlert ||
+      canvasCrisisActive ||
+      !hasReachableSpiritualMaintenance ||
+      !hasReachableRelationalMaintenance ||
+      (typeof fin === 'number' && fin < 0) ||
+      emo < healthRedline ||
+      pentagonEventLaborStress > 38 ||
+      isOverdraft;
+    return bad ? 'CRITICAL' : 'OPTIMAL';
+  }, [
+    criticalAlert,
+    canvasCrisisActive,
+    hasReachableSpiritualMaintenance,
+    hasReachableRelationalMaintenance,
+    pentagonSimRow,
+    healthRedline,
+    pentagonEventLaborStress,
+    isOverdraft,
+  ]);
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => 
@@ -2480,20 +2649,22 @@ export default function App() {
               </div>
             </div>
           ) : activeTab === 'Daily Log' ? (
-            <DailyLogView
-              currentSimMonth={currentSimulationMonth}
-              setCurrentSimulationMonth={setCurrentSimulationMonth}
-              targetTimeline={targetTimeline}
-              simulationData={simulationData}
-              systemConstraints={systemConstraints}
-              requiredSleepHours={sleepTime}
-              totalDailyHours={totalDailyHours}
-              totalFixedCosts={totalMonthlyBurnRate}
-              liveMonthlyExpenses={liveMonthlyExpenses}
-              variableCosts={eventMonthlyCost}
-              projectedYield={totalMonthlyIncome + eventMonthlyIncome}
-              savingsBelowBuffer={savingsBelowBuffer}
-            />
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+              <DailyLogView
+                currentSimMonth={currentSimulationMonth}
+                setCurrentSimulationMonth={setCurrentSimulationMonth}
+                targetTimeline={targetTimeline}
+                simulationData={simulationData}
+                systemConstraints={systemConstraints}
+                requiredSleepHours={sleepTime}
+                totalDailyHours={totalDailyHours}
+                totalFixedCosts={totalMonthlyBurnRate}
+                liveMonthlyExpenses={liveMonthlyExpenses}
+                variableCosts={eventMonthlyCost}
+                projectedYield={totalMonthlyIncome + eventMonthlyIncome}
+                savingsBelowBuffer={savingsBelowBuffer}
+              />
+            </div>
           ) : activeTab === 'Goals' ? (
             <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50 p-4">
               <div className="relative max-w-2xl w-full max-h-[calc(100vh-2rem)] bg-neutral-900/80 border-[0.5px] border-white/10 rounded-3xl shadow-2xl backdrop-blur-md overflow-hidden">
@@ -2520,7 +2691,14 @@ export default function App() {
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xs font-headline font-bold uppercase tracking-[0.3em] text-on-surface-variant">The Pentagon of Capital</h2>
                 <div className="h-px flex-1 bg-outline-variant/10 mx-6" />
-                <span className="text-[10px] font-mono text-primary">SYNC_STATUS: 100%</span>
+                <span
+                  className={cn(
+                    'text-[10px] font-mono',
+                    pentagonSyncLabel === 'OPTIMAL' ? 'text-primary' : 'text-red-400'
+                  )}
+                >
+                  SYNC_STATUS: {pentagonSyncLabel}
+                </span>
               </div>
               <AnimatePresence mode="wait">
                 <motion.div 
@@ -2532,57 +2710,100 @@ export default function App() {
                 >
                   <CapitalWidget 
                     label="Financial" 
-                    value={formatCurrency(projectedNetWorth)} 
-                    subValue="12-Mo Projection" 
+                    value={formatCurrency(typeof pentagonSimRow?.Financial === 'number' ? pentagonSimRow.Financial : 0)} 
+                    subValue={`Simulation · Month ${Math.max(1, Math.min(currentSimulationMonth, targetTimeline))}`} 
                     icon={<TrendingUp size={18} />}
-                    trend={{ value: `${((netChange / initialNetWorth) * 100).toFixed(1)}%`, positive: netChange > 0 }}
-                    color={netChange > 0 ? "primary" : "secondary"}
-                  />
-                  <CapitalWidget 
-                    label="Time Remaining" 
-                    value={isOverdraft ? "DEPLETED" : `${currentData.unallocatedTime.toFixed(1)} HRS`} 
-                    subValue="Daily Unallocated" 
-                    icon={<Hourglass size={18} />}
-                    trend={{ 
-                      value: isOverdraft ? 'OVERDRAFT' : 'STABLE', 
-                      positive: !isOverdraft 
-                    }}
-                    color={isOverdraft ? "secondary" : "primary"}
+                    trend={{ value: `${((netChange / (initialNetWorth || 1)) * 100).toFixed(1)}% horizon`, positive: netChange > 0 }}
+                    color={
+                      typeof pentagonSimRow?.Financial === 'number' && pentagonSimRow.Financial < 0
+                        ? 'secondary'
+                        : netChange > 0
+                          ? 'primary'
+                          : 'secondary'
+                    }
+                    pulseVariant={
+                      typeof pentagonSimRow?.Financial === 'number' && pentagonSimRow.Financial < 0
+                        ? 'critical'
+                        : netChange > 0 && !criticalAlert
+                          ? 'optimal'
+                          : 'neutral'
+                    }
                   />
                   <CapitalWidget 
                     label="Temporal" 
-                    value={isOverdraft ? "OVERDRAFT" : `${residualTime.toFixed(1)} HRS`} 
-                    subValue={isOverdraft ? "DAILY RESIDUAL" : "Daily Residual Time"} 
+                    value={isOverdraft ? 'OVERDRAFT' : `${pentagonTemporalHours.toFixed(1)} HRS`} 
+                    subValue={`24 − unallocated · Mo ${Math.max(1, Math.min(currentSimulationMonth, targetTimeline))}${activePath === 'aggressive' ? ' · ×1.08' : ''}`} 
                     icon={<Clock size={18} />}
                     trend={{ 
-                      value: isOverdraft ? 'CRITICAL' : (yearsUntilObjective === Infinity ? 'N/A' : `${yearsUntilObjective.toFixed(1)} YRS`), 
-                      positive: !isOverdraft && yearsUntilObjective < 20 
+                      value: isOverdraft ? 'CRITICAL' : pentagonUnallocated >= 2 ? 'BUFFER' : 'TIGHT', 
+                      positive: !isOverdraft && pentagonUnallocated >= 2,
                     }}
-                    color={isOverdraft ? "secondary" : "neutral"}
+                    color={isOverdraft ? 'secondary' : 'neutral'}
+                    pulseVariant={
+                      isOverdraft || pentagonUnallocated < 0
+                        ? 'critical'
+                        : !isOverdraft && pentagonUnallocated >= 2
+                          ? 'optimal'
+                          : 'neutral'
+                    }
                   />
                   <CapitalWidget 
                     label="Emotional" 
-                    value={`${currentData.Emotional.toFixed(1)}%`} 
-                    subValue="System Health" 
+                    value={`${(pentagonSimRow?.Emotional ?? 0).toFixed(1)}%`} 
+                    subValue={pentagonEventLaborStress > 12 ? `Labor/cost stress · ${pentagonEventLaborStress.toFixed(0)}` : 'System health'} 
                     icon={<Activity size={18} />}
-                    trend={{ value: currentData.Emotional > 60 ? 'STABLE' : 'CRITICAL', positive: currentData.Emotional > 60 }}
-                    color={currentData.Emotional > 60 ? "primary" : "secondary"}
+                    trend={{
+                      value:
+                        (pentagonSimRow?.Emotional ?? 0) > healthRedline && pentagonEventLaborStress <= 38
+                          ? 'STABLE'
+                          : 'LOAD',
+                      positive:
+                        (pentagonSimRow?.Emotional ?? 0) > healthRedline && pentagonEventLaborStress <= 38,
+                    }}
+                    color={(pentagonSimRow?.Emotional ?? 0) > healthRedline ? 'primary' : 'secondary'}
+                    pulseVariant={
+                      (pentagonSimRow?.Emotional ?? 0) < healthRedline || pentagonEventLaborStress > 38
+                        ? 'critical'
+                        : (pentagonSimRow?.Emotional ?? 0) > 60 && pentagonEventLaborStress <= 20
+                          ? 'optimal'
+                          : 'neutral'
+                    }
                   />
                   <CapitalWidget 
                     label="Relational" 
-                    value={`${currentData.Relational.toFixed(1)}%`} 
-                    subValue="Harmony Index" 
+                    value={`${(pentagonSimRow?.Relational ?? 0).toFixed(1)}%`} 
+                    subValue="Harmony · maintenance graph" 
                     icon={<Users size={18} />}
-                    trend={{ value: currentData.Relational > relationalTripwire ? 'STABLE' : 'DEBT', positive: currentData.Relational > relationalTripwire }}
-                    color={currentData.Relational > relationalTripwire ? "relational" : "secondary"}
+                    trend={{ value: (pentagonSimRow?.Relational ?? 0) > relationalTripwire ? 'STABLE' : 'DEBT', positive: (pentagonSimRow?.Relational ?? 0) > relationalTripwire }}
+                    color={(pentagonSimRow?.Relational ?? 0) > relationalTripwire ? 'relational' : 'secondary'}
+                    pulseVariant={
+                      !hasReachableRelationalMaintenance || (pentagonSimRow?.Relational ?? 0) < relationalTripwire
+                        ? 'critical'
+                        : (pentagonSimRow?.Relational ?? 0) > relationalTripwire + 15
+                          ? 'optimal'
+                          : 'neutral'
+                    }
+                    alertBanner={
+                      !hasReachableRelationalMaintenance ? 'RED ALERT: NO RELATIONAL MAINTENANCE NODE' : undefined
+                    }
                   />
                   <CapitalWidget 
                     label="Spiritual" 
-                    value={`${currentData.Spiritual.toFixed(1)}%`} 
-                    subValue="Alignment" 
+                    value={`${(pentagonSimRow?.Spiritual ?? 0).toFixed(1)}%`} 
+                    subValue="Alignment · maintenance graph" 
                     icon={<Sparkles size={18} />}
-                    trend={{ value: currentData.Spiritual > spiritualTripwire ? 'ALIGNED' : 'DRIFT', positive: currentData.Spiritual > spiritualTripwire }}
-                    color={currentData.Spiritual > spiritualTripwire ? "spiritual" : "secondary"}
+                    trend={{ value: (pentagonSimRow?.Spiritual ?? 0) > spiritualTripwire ? 'ALIGNED' : 'DRIFT', positive: (pentagonSimRow?.Spiritual ?? 0) > spiritualTripwire }}
+                    color={(pentagonSimRow?.Spiritual ?? 0) > spiritualTripwire ? 'spiritual' : 'secondary'}
+                    pulseVariant={
+                      !hasReachableSpiritualMaintenance || (pentagonSimRow?.Spiritual ?? 0) < spiritualTripwire
+                        ? 'critical'
+                        : (pentagonSimRow?.Spiritual ?? 0) > spiritualTripwire + 15
+                          ? 'optimal'
+                          : 'neutral'
+                    }
+                    alertBanner={
+                      !hasReachableSpiritualMaintenance ? 'RED ALERT: NO SPIRITUAL MAINTENANCE NODE' : undefined
+                    }
                   />
                 </motion.div>
               </AnimatePresence>
@@ -2934,8 +3155,8 @@ export default function App() {
                   onTitleChange={setAggressivePathName}
                   variance="18.7%"
                   description="High-leverage resource allocation focusing on exponential scale and rapid equity accumulation. High risk of burnout and temporal depletion."
-                  emotionalTax={Math.min(10, 8.2 * (aggressiveHalal ? 1 : 2.5))}
-                  burnout={8.2 * (aggressiveHalal ? 1 : 2.5) > 7 ? "CRITICAL" : "MEDIUM"}
+                  emotionalTax={Math.min(10, (8.2 + 1.5) * (aggressiveHalal ? 1 : 2.5))}
+                  burnout={(8.2 + 1.5) * (aggressiveHalal ? 1 : 2.5) > 7 ? "CRITICAL" : "MEDIUM"}
                   timeFreedom="MINIMAL"
                   wealthCeiling="UNCAPPED"
                   type="aggressive"
@@ -3351,9 +3572,9 @@ export default function App() {
             {/* Tactical Critical Path */}
             <section className={cn(
               "bg-surface p-6 border transition-all duration-500 relative",
-              isTripwireTriggered ? "border-secondary shadow-[0_0_20px_rgba(255,68,68,0.1)]" : "border-outline-variant/10"
+              isTripwireTriggered || tacticalWindowBreached ? "border-secondary shadow-[0_0_20px_rgba(255,68,68,0.1)]" : "border-outline-variant/10"
             )}>
-              {isTripwireTriggered && (
+              {(isTripwireTriggered || tacticalWindowBreached) && (
                 <div className="absolute top-0 left-0 w-full h-1 bg-secondary animate-pulse" />
               )}
               
@@ -3385,17 +3606,23 @@ export default function App() {
 
               <div className="overflow-x-auto terminal-scroll pb-4">
                 <div className="flex gap-4 min-w-max">
-                  {pathMilestones.map((milestone) => (
+                  {pathMilestones.map((milestone) => {
+                    const rowDegraded = milestone.emotional < healthRedline;
+                    const showBreach = milestone.breached || rowDegraded;
+                    return (
                     <div key={milestone.month} className={cn(
                       "w-56 bg-surface-lowest border p-4 font-mono text-[10px] transition-colors",
-                      milestone.emotional < healthRedline ? "border-secondary/30 bg-secondary/5" : "border-outline-variant/10"
+                      showBreach ? "border-secondary/30 bg-secondary/5" : "border-outline-variant/10"
                     )}>
                       <div className="flex justify-between items-center mb-3 border-b border-outline-variant/10 pb-2">
-                        <span className={milestone.emotional < healthRedline ? "text-secondary" : "text-primary"}>
+                        <span className={showBreach ? "text-secondary" : "text-primary"}>
                           M_{milestone.month.toString().padStart(2, '0')}
                         </span>
-                        {milestone.emotional < healthRedline && (
-                          <span className="text-[8px] text-secondary animate-pulse font-bold">BREACH</span>
+                        {milestone.breached && (
+                          <span className="text-[8px] text-red-400 animate-pulse font-bold">BREACH</span>
+                        )}
+                        {!milestone.breached && rowDegraded && (
+                          <span className="text-[8px] text-secondary animate-pulse font-bold">HEALTH</span>
                         )}
                         <span className="text-[8px] text-on-surface-variant">CHECKPOINT</span>
                       </div>
@@ -3407,7 +3634,7 @@ export default function App() {
                           </div>
                           <div className="text-right">
                             <p className="text-[8px] text-on-surface-variant uppercase mb-1">Velocity</p>
-                            <p className="text-primary font-bold">+{((monthlyNetChange / initialNetWorth) * 100).toFixed(2)}%</p>
+                            <p className="text-primary font-bold">+{((monthlyNetChange / (initialNetWorth || 1)) * 100).toFixed(2)}%</p>
                           </div>
                         </div>
                         
@@ -3416,17 +3643,17 @@ export default function App() {
                             <p className="text-[8px] text-on-surface-variant uppercase">System Health</p>
                             <p className={cn(
                               "font-bold",
-                              milestone.emotional < healthRedline ? "text-secondary" : "text-primary"
+                              rowDegraded ? "text-secondary" : "text-primary"
                             )}>
                               {milestone.emotional.toFixed(1)}%
                             </p>
                           </div>
                           <div className={cn(
                             "h-1 w-full bg-surface-highest",
-                            milestone.emotional < healthRedline ? "bg-secondary/20" : "bg-primary/20"
+                            rowDegraded ? "bg-secondary/20" : "bg-primary/20"
                           )}>
                             <div 
-                              className={cn("h-full transition-all duration-1000", milestone.emotional < healthRedline ? "bg-secondary" : "bg-primary")} 
+                              className={cn("h-full transition-all duration-1000", rowDegraded ? "bg-secondary" : "bg-primary")} 
                               style={{ width: `${milestone.emotional}%` }} 
                             />
                           </div>
@@ -3436,14 +3663,14 @@ export default function App() {
                           <span className="text-[8px] text-on-surface-variant uppercase">Status</span>
                           <span className={cn(
                             "text-[8px] font-bold uppercase",
-                            milestone.emotional < healthRedline ? "text-secondary" : "text-primary"
+                            showBreach ? "text-secondary" : "text-primary"
                           )}>
-                            {milestone.emotional < healthRedline ? "Degraded" : "Optimal"}
+                            {milestone.breached ? "Red path" : rowDegraded ? "Degraded" : "Optimal"}
                           </span>
                         </div>
                       </div>
                     </div>
-                  ))}
+                  );})}
                   {monthsToTarget === -1 && (
                     <div className="flex-1 flex items-center justify-center p-8 border border-dashed border-secondary/30 text-secondary font-mono text-xs uppercase tracking-widest">
                       <AlertTriangle size={16} className="mr-3" />
