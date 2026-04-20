@@ -140,8 +140,8 @@ const CapitalWidget = ({
 }: CapitalWidgetProps) => (
   <div
     className={cn(
-      'bg-surface p-5 border-l-2 border-outline-variant transition-all duration-300 group relative overflow-hidden hover:border-primary/50',
-      'min-w-0 w-full flex-1 md:basis-0',
+      'bg-surface p-6 border-l-2 border-outline-variant transition-all duration-300 group relative overflow-hidden hover:border-primary/50',
+      'min-w-0 w-full',
       pulseVariant === 'optimal' && 'pentagon-pulse-optimal border-primary/25',
       pulseVariant === 'critical' && 'pentagon-pulse-critical border-red-500/40'
     )}
@@ -2686,7 +2686,7 @@ export default function App() {
             <SupportView />
           ) : viewMode === 'terminal' ? (
             <>
-              <div className="flex-1 w-full max-w-none min-w-0 overflow-y-auto terminal-scroll px-4 md:px-12 py-8 pr-6 md:pr-[22rem] space-y-10">
+              <div className="flex-1 w-full max-w-[1800px] mx-auto min-w-0 overflow-y-auto terminal-scroll px-4 md:px-12 py-8 pr-6 md:pr-[22rem] space-y-10">
             {/* Pentagon of Capital Header */}
             <section>
               <div className="flex items-center justify-between mb-6">
@@ -2707,7 +2707,7 @@ export default function App() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="flex w-full flex-col gap-4 md:flex-row md:items-stretch"
+                  className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
                 >
                   <CapitalWidget 
                     label="Financial" 
@@ -3173,11 +3173,11 @@ export default function App() {
             {/* Secondary Analytics Row */}
             {/* Equilibrium Radar Chart */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="bg-surface p-6 border border-outline-variant/10 flex flex-col items-center">
+              <div className="bg-surface p-6 border border-outline-variant/10 flex min-w-0 flex-col items-center pl-4 sm:pl-6 md:pl-8">
                 <h3 className="text-xs font-headline uppercase tracking-widest font-bold mb-6 self-start">Equilibrium Matrix</h3>
-                <div className="h-64 w-full">
+                <div className="h-64 w-full min-w-0 max-w-full px-1 sm:px-2">
                   <ResponsiveContainer width="100%" height="100%">
-                    <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
+                    <RadarChart cx="50%" cy="50%" outerRadius="72%" data={[
                       { subject: 'Wealth', A: sanitizeNum((currentData.Financial / (sanitizeNum(targetCapital, 1))) * 100), fullMark: 100 },
                       { subject: 'Health', A: sanitizeNum(currentData.Emotional), fullMark: 100 },
                       { subject: 'Time', A: sanitizeNum(Math.min(100, (residualTime / 8) * 100)), fullMark: 100 },
@@ -3606,13 +3606,13 @@ export default function App() {
               </div>
 
               <div className="terminal-scroll pb-4">
-                <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+                <div className="grid w-full grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {pathMilestones.map((milestone) => {
                     const rowDegraded = milestone.emotional < healthRedline;
                     const showBreach = milestone.breached || rowDegraded;
                     return (
                     <div key={milestone.month} className={cn(
-                      "min-w-0 w-full bg-surface-lowest border p-4 font-mono text-[10px] transition-colors",
+                      "min-w-0 w-full bg-surface-lowest border p-6 font-mono text-[10px] transition-colors",
                       showBreach ? "border-secondary/30 bg-secondary/5" : "border-outline-variant/10"
                     )}>
                       <div className="flex justify-between items-center mb-3 border-b border-outline-variant/10 pb-2">

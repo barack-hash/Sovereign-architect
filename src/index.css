@@ -208,6 +208,11 @@
   animation: pentagon-jitter 0.85s ease-in-out infinite;
 }
 
+/* Recharts radar: keep axis labels from hugging the viewport edge beside the sidebar rail */
+.recharts-polar-angle-axis-tick-value {
+  dominant-baseline: central;
+}
+
 /* Safety Protocols: range sliders + commit flash */
 input[type='range'].protocol-range::-webkit-slider-thumb {
   -webkit-appearance: none;
