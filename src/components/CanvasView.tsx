@@ -95,13 +95,13 @@ const SlackEdge = ({
           style={{
             position: 'absolute',
             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-            pointerEvents: 'all',
+            pointerEvents: 'none',
           }}
           className="nodrag nopan group"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 pointer-events-auto">
             <div className={cn(
               "px-2 py-0.5 rounded-sm border text-[8px] font-mono font-bold uppercase tracking-tighter shadow-xl transition-all",
               isLiquidityCrisis ? "bg-secondary text-surface-lowest border-secondary animate-pulse" : (isCritical ? "bg-secondary text-surface-lowest border-secondary" : "bg-surface-container text-primary border-primary/30")

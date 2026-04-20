@@ -1499,6 +1499,7 @@ export default function App() {
   };
   const projectedNetWorth = currentData.Financial;
   const netChange = projectedNetWorth - initialNetWorth;
+  const isModalView = activeTab === 'Constraints' || activeTab === 'Goals';
   const glassPanelClass = 'bg-neutral-900/40 border-[0.5px] border-white/5';
   const glassPanelStrongClass = 'bg-neutral-900/60 border-[0.5px] border-white/5';
   const monthlyNetChange = netChange / (targetTimeline || 1);
@@ -1702,8 +1703,10 @@ export default function App() {
         </div>
       ) : (
         <div className="relative h-screen w-screen overflow-hidden font-sans bg-neutral-950 text-white">
+      {!isModalView && (chaosReport || pathReport) && (
+        <div className="fixed top-24 right-8 z-[60] flex flex-col gap-4 drop-shadow-2xl">
       {chaosReport && (
-        <div className="absolute top-24 right-8 z-[100] drop-shadow-2xl">
+        <div>
           <div className={cn("backdrop-blur-2xl border p-6 max-w-md text-center shadow-2xl rounded-2xl", glassPanelStrongClass)}>
             <h2 className="text-primary font-bold font-headline text-xl mb-4 tracking-widest">[ CHAOS REPORT ]</h2>
             <p className="text-white font-headline mb-8">{chaosReport}</p>
@@ -1714,7 +1717,7 @@ export default function App() {
         </div>
       )}
       {pathReport && (
-        <div className="absolute top-24 right-8 z-[100] drop-shadow-2xl">
+        <div>
           <div className={cn("backdrop-blur-2xl border p-6 max-w-md text-left shadow-2xl rounded-2xl", glassPanelStrongClass)}>
             <h2 className="text-primary font-bold font-headline text-xl mb-4 tracking-widest">[ CRITICAL PATH ANALYSIS ]</h2>
             <div className="mb-6 border-l-2 border-primary/50 pl-4">
@@ -1730,6 +1733,8 @@ export default function App() {
           </div>
         </div>
       )}
+      </div>
+      )}
       {/* Sidebar */}
       <div className="absolute left-4 top-4 bottom-4 z-40">
         <Sidebar 
@@ -1744,7 +1749,7 @@ export default function App() {
       <div className="absolute inset-0 min-w-0 min-h-0 flex flex-col z-0 overflow-hidden">
         <div className="flex flex-col min-h-0 h-full">
           {/* Header */}
-          {activeTab !== 'Constraints' && activeTab !== 'Goals' && (
+          {!isModalView && (
             <header className={cn("fixed top-6 left-1/2 -translate-x-1/2 w-fit max-w-[92vw] backdrop-blur-md border-[0.5px] rounded-full shadow-[0_20px_80px_rgba(0,0,0,0.12)] px-4 py-2 z-40 transition-all duration-300 group", glassPanelClass)}>
               <div className="flex items-center gap-4 text-[10px] tracking-[0.2em] uppercase">
                 <div className="flex items-center gap-2">
@@ -1820,48 +1825,26 @@ export default function App() {
             </header>
           )}
 
-        {/* Tabbed Navigation */}
-        {activeTab === 'Path Simulations' && (
-          <div className={cn("fixed top-20 left-1/2 -translate-x-1/2 z-40 flex backdrop-blur-md border-[0.5px] rounded-2xl px-1.5 py-1 shadow-[0_20px_80px_rgba(0,0,0,0.08)]", glassPanelClass)}>
-            <button 
-              onClick={() => setViewMode('terminal')}
-              className={cn(
-                "px-6 py-2 text-[10px] font-headline uppercase tracking-[0.2em] transition-all relative flex items-center gap-2 rounded-full",
-                viewMode === 'terminal' ? "bg-white/10 text-primary" : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
-              )}
-            >
-              <Terminal size={14} />
-              TERMINAL VIEW
-            </button>
-            <button 
-              onClick={() => setViewMode('canvas')}
-              className={cn(
-                "px-6 py-2 text-[10px] font-headline uppercase tracking-[0.2em] transition-all relative flex items-center gap-2 rounded-full",
-                viewMode === 'canvas' ? "bg-white/10 text-primary" : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
-              )}
-            >
-              <Network size={14} />
-              CANVAS VIEW
-            </button>
-          </div>
-        )}
-
         {/* Dashboard Content */}
-        <div className="absolute inset-0 min-h-0 min-w-0 flex overflow-hidden pt-28 pb-16 px-4">
+        <div className="absolute inset-0 min-h-0 min-w-0 flex overflow-hidden pt-36 pb-16 pl-24 pr-6">
           {activeTab === 'Constraints' ? (
             <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50 p-4">
-              <div className="relative max-w-2xl w-full bg-neutral-900/80 border-[0.5px] border-white/10 p-8 rounded-3xl shadow-2xl backdrop-blur-md">
+              <div className="relative max-w-2xl w-full max-h-[calc(100vh-2rem)] bg-neutral-900/80 border-[0.5px] border-white/10 rounded-3xl shadow-2xl backdrop-blur-md overflow-hidden">
                 <button onClick={() => setActiveTab('Path Simulations')} className="absolute top-4 right-4 text-red-600 font-mono text-sm">[ X ]</button>
-                <ConstraintsView systemConstraints={systemConstraints} setSystemConstraints={setSystemConstraints} />
+                <div className="h-full max-h-[calc(100vh-2rem)] overflow-y-auto">
+                  <ConstraintsView systemConstraints={systemConstraints} setSystemConstraints={setSystemConstraints} />
+                </div>
               </div>
             </div>
           ) : activeTab === 'Daily Log' ? (
             <DailyLogView nodes={timelineEvents} currentSimMonth={currentSimulationMonth} systemConstraints={systemConstraints} />
           ) : activeTab === 'Goals' ? (
             <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50 p-4">
-              <div className="relative max-w-2xl w-full bg-neutral-900/80 border-[0.5px] border-white/10 p-8 rounded-3xl shadow-2xl backdrop-blur-md">
+              <div className="relative max-w-2xl w-full max-h-[calc(100vh-2rem)] bg-neutral-900/80 border-[0.5px] border-white/10 rounded-3xl shadow-2xl backdrop-blur-md overflow-hidden">
                 <button onClick={() => setActiveTab('Path Simulations')} className="absolute top-4 right-4 text-red-600 font-mono text-sm">[ X ]</button>
-                <GoalsView nodes={timelineEvents} simulationData={simulationData} currentSimMonth={currentSimulationMonth} />
+                <div className="p-8 h-full max-h-[calc(100vh-2rem)] overflow-y-auto">
+                  <GoalsView nodes={timelineEvents} simulationData={simulationData} currentSimMonth={currentSimulationMonth} />
+                </div>
               </div>
             </div>
           ) : activeTab === 'Settings' ? (
@@ -1870,7 +1853,7 @@ export default function App() {
             <SupportView />
           ) : viewMode === 'terminal' ? (
             <>
-              <div className="flex-1 overflow-y-auto terminal-scroll p-8 space-y-10">
+              <div className="flex-1 overflow-y-auto terminal-scroll p-8 pr-[22rem] space-y-10">
             {/* Pentagon of Capital Header */}
             <section>
               <div className="flex items-center justify-between mb-6">
@@ -3261,6 +3244,7 @@ export default function App() {
       </div>
 
       {/* Bottom Ticker */}
+        {!isModalView && (
         <footer className={cn("absolute bottom-4 left-1/2 -translate-x-1/2 w-[min(94vw,1100px)] h-9 backdrop-blur-md border-[0.5px] rounded-2xl flex items-center overflow-hidden z-40 shadow-[0_20px_80px_rgba(0,0,0,0.08)]", glassPanelClass)}>
           <div className="flex items-center gap-12 px-6 whitespace-nowrap animate-marquee">
             {[
@@ -3292,6 +3276,7 @@ export default function App() {
             ))}
           </div>
         </footer>
+        )}
           </div>
         </div>
       </div>
