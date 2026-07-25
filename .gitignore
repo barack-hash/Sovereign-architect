@@ -4,5 +4,15 @@ dist/
 coverage/
 .DS_Store
 *.log
-.env*
-!.env.example
+
+# Local env files. Nothing in this app needs one, but never commit one if it appears.
+.env
+.env.*
+
+# Vercel project link — contains project and org ids
+.vercel/
+
+# Editor / tooling
+.idea/
+.vscode/
+*.tsbuildinfo

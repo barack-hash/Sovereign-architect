@@ -1,233 +1,173 @@
 import React, { useState } from 'react';
-import { 
-  Target, 
-  Lock, 
-  TrendingUp, 
-  FileText, 
-  ArrowUpRight, 
-  Settings, 
-  HelpCircle, 
-  User,
-  Library,
-  Trash2,
+import {
+  Dices,
+  FlaskConical,
+  LayoutDashboard,
+  Lock,
+  Network,
+  PlayCircle,
+  Settings,
+  X,
 } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import { cn } from '../lib/utils';
 
-/** Desktop / md+ rail. On small viewports, primary nav is the bottom bar + command sheet in `App.tsx` (Phase 72). */
-interface SidebarProps {
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
-  onExport: () => void;
-  onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onLoadTemplate?: (id: 'aviation' | 'travel') => void;
-  onOpenResetModal?: () => void;
-  onOpenCommanderDossier?: () => void;
+export type TabId =
+  | 'dashboard'
+  | 'canvas'
+  | 'lab'
+  | 'risk'
+  | 'constraints'
+  | 'execution'
+  | 'settings';
+
+export const TABS: Array<{ id: TabId; label: string; icon: React.ReactNode; blurb: string }> = [
+  { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={17} />, blurb: 'Where the plan takes you' },
+  { id: 'canvas', label: 'Canvas', icon: <Network size={17} />, blurb: 'Tasks and dependencies' },
+  { id: 'lab', label: 'Scenario Lab', icon: <FlaskConical size={17} />, blurb: 'Compare every ordering' },
+  { id: 'risk', label: 'Risk', icon: <Dices size={17} />, blurb: 'Thousands of futures' },
+  { id: 'constraints', label: 'Constraints', icon: <Lock size={17} />, blurb: 'Lines you will not cross' },
+  { id: 'execution', label: 'Execution', icon: <PlayCircle size={17} />, blurb: 'This month, and reality' },
+];
+
+interface Props {
+  activeTab: TabId;
+  onSelect: (tab: TabId) => void;
+  planName: string;
+  /** Mobile drawer state. Ignored at md and above, where the rail is always present. */
+  mobileOpen: boolean;
+  onMobileClose: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ 
-  activeTab, 
-  setActiveTab, 
-  onExport, 
-  onImport,
-  onLoadTemplate,
-  onOpenResetModal,
-  onOpenCommanderDossier,
-}) => {
-  const [isCollapsed, setIsCollapsed] = useState(true);
+export function Sidebar({ activeTab, onSelect, planName, mobileOpen, onMobileClose }: Props) {
+  const [collapsed, setCollapsed] = useState(false);
 
-  const navItems = [
-    { label: 'Goals', icon: <Target size={18} /> },
-    { label: 'Constraints', icon: <Lock size={18} /> },
-    { label: 'Path Simulations', icon: <TrendingUp size={18} /> },
-    { label: 'Daily Log', icon: <FileText size={18} /> },
-  ];
-  const getHoverLabel = (label: string) => {
-    if (label === 'Path Simulations') return 'Path Simulations (Terminal/Canvas)';
-    return label;
+  // Selecting a destination on a phone should also dismiss the drawer, otherwise
+  // the user lands on a view they cannot see.
+  const select = (tab: TabId) => {
+    onSelect(tab);
+    onMobileClose();
+  };
+
+  const content = (isDrawer: boolean) => {
+    // The drawer is always full-width; only the desktop rail can collapse.
+    const narrow = collapsed && !isDrawer;
+
+    return (
+      <>
+        <div className={cn('flex items-center justify-between mb-6 md:mb-8', narrow ? 'px-3' : 'px-5 md:px-6')}>
+          {!narrow && (
+            <div className="min-w-0">
+              <h1 className="text-primary font-headline font-bold tracking-tighter text-xl leading-none">
+                SOVEREIGN
+              </h1>
+              <p className="text-[9px] font-mono uppercase tracking-[0.15em] text-on-surface-variant mt-1.5 truncate">
+                {planName}
+              </p>
+            </div>
+          )}
+
+          {isDrawer ? (
+            <button
+              onClick={onMobileClose}
+              aria-label="Close menu"
+              className="p-2 -mr-2 text-on-surface-variant hover:text-primary transition-colors"
+            >
+              <X size={20} />
+            </button>
+          ) : (
+            <button
+              onClick={() => setCollapsed((v) => !v)}
+              className="p-1 text-[9px] font-mono font-bold border border-outline-variant/25 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors shrink-0"
+              title={narrow ? 'Expand' : 'Collapse'}
+            >
+              {narrow ? '»' : '«'}
+            </button>
+          )}
+        </div>
+
+        <nav className="flex-1 space-y-0.5 overflow-y-auto terminal-scroll">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => select(tab.id)}
+              title={narrow ? tab.label : tab.blurb}
+              className={cn(
+                'relative flex items-center w-full transition-colors',
+                // Roomier rows on touch so each is a comfortable target.
+                narrow ? 'justify-center py-3.5' : 'px-5 md:px-6 py-3.5 md:py-3',
+                activeTab === tab.id
+                  ? 'text-primary bg-surface-container'
+                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50',
+              )}
+            >
+              {activeTab === tab.id && <span className="absolute right-0 top-0 bottom-0 w-0.5 bg-primary" />}
+              <span className={cn(!narrow && 'mr-3.5')}>{tab.icon}</span>
+              {!narrow && (
+                <span className="min-w-0 text-left">
+                  <span className="block font-headline text-[14px] md:text-[13px] tracking-tight leading-tight">
+                    {tab.label}
+                  </span>
+                  <span className="block text-[9px] text-on-surface-variant/50 truncate leading-tight mt-0.5">
+                    {tab.blurb}
+                  </span>
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        <button
+          onClick={() => select('settings')}
+          title={narrow ? 'Settings' : undefined}
+          className={cn(
+            'flex items-center w-full py-3.5 md:py-3 transition-colors border-t border-outline-variant/10 mt-4 shrink-0',
+            narrow ? 'justify-center' : 'px-5 md:px-6',
+            activeTab === 'settings' ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface',
+          )}
+        >
+          <Settings size={16} className={cn(!narrow && 'mr-3.5')} />
+          {!narrow && <span className="font-headline text-[14px] md:text-[13px]">Settings</span>}
+        </button>
+      </>
+    );
   };
 
   return (
-    <aside 
-      onMouseEnter={() => setIsCollapsed(false)}
-      onMouseLeave={() => setIsCollapsed(true)}
-      className={cn(
-        "hidden h-full shrink-0 flex-col py-4 backdrop-blur-xl border-[0.5px] rounded-2xl shadow-[0_20px_80px_rgba(0,0,0,0.08)] transition-all duration-300 ease-in-out z-40 overflow-hidden md:flex",
-        "bg-neutral-900/35 border-white/5 border-r-[0.5px] border-r-white/5",
-        isCollapsed ? "w-16 items-center" : "w-48"
-      )}
-    >
-      <div className={cn(
-        "px-3 mb-6 flex items-center justify-between w-full",
-        isCollapsed && "px-0 justify-center mb-4"
-      )}>
-        {!isCollapsed && (
-          <div>
-            <h1 className="text-primary font-bold tracking-tighter text-lg font-headline">SOVEREIGN</h1>
-            <p className="font-headline uppercase tracking-[0.22em] text-[9px] text-on-surface-variant mt-0.5">Life Strategy</p>
-          </div>
+    <>
+      {/* Desktop rail */}
+      <aside
+        className={cn(
+          'hidden md:flex border-r border-outline-variant/20 bg-surface flex-col py-6 transition-[width] duration-200 shrink-0',
+          collapsed ? 'w-16' : 'w-60',
         )}
-        <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-[10px] font-mono font-bold border border-primary/20">
-          S
-        </div>
-      </div>
+      >
+        {content(false)}
+      </aside>
 
-      <nav className="flex-1 space-y-1 w-full">
-        {navItems.map((item) => (
-          <div key={item.label} className="relative group/nav">
-            <button 
-              onClick={() => setActiveTab(item.label)}
-              className={cn(
-                "flex items-center transition-all duration-200 group relative mx-2 rounded-xl border border-transparent",
-                isCollapsed ? "justify-center px-0 py-3 w-[calc(100%-16px)]" : "px-4 py-3 w-[calc(100%-16px)]",
-                activeTab === item.label 
-                  ? "text-emerald-500 bg-white/10 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)]" 
-                  : "text-on-surface-variant hover:text-on-surface hover:bg-white/5 hover:border-white/10"
-              )}
-              title={isCollapsed ? getHoverLabel(item.label) : undefined}
+      {/* Mobile drawer */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={onMobileClose}
+              className="md:hidden fixed inset-0 bg-black/70 z-40"
+            />
+            <motion.aside
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'tween', duration: 0.2 }}
+              className="md:hidden fixed inset-y-0 left-0 w-[17rem] max-w-[85vw] bg-surface border-r border-outline-variant/20 flex flex-col py-5 z-50 shadow-2xl"
             >
-              {activeTab === item.label && (
-                <div className={cn(
-                  "absolute top-0 bottom-0 w-0.5 bg-emerald-500",
-                  isCollapsed ? "right-0" : "right-0"
-                )} />
-              )}
-              <span className={cn(!isCollapsed && "mr-4")}>{item.icon}</span>
-              {!isCollapsed && <span className="font-headline tracking-wide text-xs uppercase">{item.label}</span>}
-            </button>
-            {isCollapsed && (
-              <span className="pointer-events-none absolute left-14 top-1/2 -translate-y-1/2 whitespace-nowrap opacity-0 group-hover/nav:opacity-100 transition-opacity text-[9px] tracking-[0.16em] uppercase bg-neutral-900/95 border border-white/10 rounded-lg px-2 py-1 text-stone-200 z-50">
-                {getHoverLabel(item.label)}
-              </span>
-            )}
-          </div>
-        ))}
-      </nav>
-
-      <div className={cn(
-        "pt-4 mt-auto border-t border-outline-variant/10 space-y-1 w-full",
-        isCollapsed ? "px-2" : "px-8"
-      )}>
-        <div className="flex flex-col gap-2 mb-4 mx-2">
-          {onLoadTemplate && (
-            <div className="flex flex-col gap-1.5">
-              {!isCollapsed && (
-                <p className="text-[8px] font-headline uppercase tracking-[0.2em] text-on-surface-variant/70 px-1">
-                  [ Load template ]
-                </p>
-              )}
-              <button
-                type="button"
-                onClick={() => onLoadTemplate('aviation')}
-                className={cn(
-                  'flex items-center text-[9px] font-headline uppercase tracking-[0.15em] hover:bg-white/5 transition-all text-on-surface-variant hover:text-emerald-400/95 rounded-xl border border-transparent hover:border-emerald-500/20',
-                  isCollapsed ? 'justify-center p-3' : 'px-4 py-2.5 w-full'
-                )}
-                title={isCollapsed ? 'Aviation Maintenance Path' : undefined}
-              >
-                <Library size={14} className={cn(!isCollapsed && 'mr-2 shrink-0')} />
-                {!isCollapsed && <span className="truncate text-left">Aviation Path</span>}
-              </button>
-              <button
-                type="button"
-                onClick={() => onLoadTemplate('travel')}
-                className={cn(
-                  'flex items-center text-[9px] font-headline uppercase tracking-[0.15em] hover:bg-white/5 transition-all text-on-surface-variant hover:text-emerald-400/95 rounded-xl border border-transparent hover:border-emerald-500/20',
-                  isCollapsed ? 'justify-center p-3' : 'px-4 py-2.5 w-full'
-                )}
-                title={isCollapsed ? 'Travel Agency Launch' : undefined}
-              >
-                <Library size={14} className={cn(!isCollapsed && 'mr-2 shrink-0')} />
-                {!isCollapsed && <span className="truncate text-left">Travel Launch</span>}
-              </button>
-            </div>
-          )}
-          <button 
-            onClick={onExport}
-            className={cn(
-              "flex items-center text-[9px] font-headline uppercase tracking-[0.2em] hover:bg-white/5 transition-all text-on-surface-variant hover:text-on-surface rounded-xl border border-transparent hover:border-white/10",
-              isCollapsed ? "justify-center p-3" : "px-4 py-3 w-full"
-            )}
-            title={isCollapsed ? "Export Path" : undefined}
-          >
-            <ArrowUpRight size={14} className={cn(!isCollapsed && "mr-3")} /> 
-            {!isCollapsed && "Export Json"}
-          </button>
-          <label 
-            className={cn(
-              "flex items-center text-[9px] font-headline uppercase tracking-[0.2em] hover:bg-white/5 transition-all text-on-surface-variant hover:text-on-surface cursor-pointer rounded-xl border border-transparent hover:border-white/10",
-              isCollapsed ? "justify-center p-3" : "px-4 py-3 w-full"
-            )}
-            title={isCollapsed ? "Import Path" : undefined}
-          >
-            <TrendingUp size={14} className={cn(!isCollapsed && "mr-3")} /> 
-            {!isCollapsed && "Import Json"}
-            <input type="file" accept=".json" className="hidden" onChange={onImport} />
-          </label>
-        </div>
-        
-        <button 
-          onClick={() => setActiveTab('Settings')}
-          className={cn(
-            "flex items-center w-[calc(100%-16px)] mx-2 py-2.5 transition-colors text-sm font-headline rounded-xl",
-            isCollapsed ? "justify-center" : "px-4",
-            activeTab === 'Settings' ? "text-emerald-500 bg-white/10 shadow-[0_0_10px_rgba(16,185,129,0.2)]" : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
-          )}
-          title={isCollapsed ? "Settings" : undefined}
-        >
-          <Settings size={16} className={cn(!isCollapsed && "mr-3")} /> 
-          {!isCollapsed && "Settings"}
-        </button>
-        <button 
-          onClick={() => setActiveTab('Support')}
-          className={cn(
-            "flex items-center w-[calc(100%-16px)] mx-2 py-2.5 transition-colors text-sm font-headline rounded-xl",
-            isCollapsed ? "justify-center" : "px-4",
-            activeTab === 'Support' ? "text-emerald-500 bg-white/10 shadow-[0_0_10px_rgba(16,185,129,0.2)]" : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
-          )}
-          title={isCollapsed ? "Support" : undefined}
-        >
-          <HelpCircle size={16} className={cn(!isCollapsed && "mr-3")} /> 
-          {!isCollapsed && "Support"}
-        </button>
-        
-        <button
-          type="button"
-          onClick={() => onOpenCommanderDossier?.()}
-          disabled={!onOpenCommanderDossier}
-          title={isCollapsed ? 'Commander dossier' : undefined}
-          className={cn(
-            'mt-5 w-full rounded-lg p-2.5 bg-surface-container flex items-center gap-3 border border-white/5 text-left transition-all',
-            onOpenCommanderDossier && 'hover:border-emerald-500/30 hover:bg-white/[0.04] cursor-pointer',
-            !onOpenCommanderDossier && 'opacity-80 cursor-default',
-            isCollapsed && 'p-1 justify-center'
-          )}
-        >
-          <div className="w-10 h-10 bg-surface-highest rounded-sm flex items-center justify-center text-on-surface-variant shrink-0">
-            <User size={20} />
-          </div>
-          {!isCollapsed && (
-            <div className="overflow-hidden min-w-0">
-              <p className="text-xs font-bold truncate">ANALYST_01</p>
-              <p className="text-[10px] text-primary truncate">Active Session</p>
-            </div>
-          )}
-        </button>
-
-        {onOpenResetModal && (
-          <button
-            type="button"
-            onClick={onOpenResetModal}
-            className={cn(
-              'mt-3 flex items-center text-[9px] font-headline uppercase tracking-[0.2em] text-red-500/90 hover:bg-red-950/30 transition-all rounded-xl border border-transparent hover:border-red-900/40 mx-2',
-              isCollapsed ? 'justify-center p-3 w-[calc(100%-16px)]' : 'px-4 py-3 w-[calc(100%-16px)]'
-            )}
-            title={isCollapsed ? 'Reset system' : undefined}
-          >
-            <Trash2 size={16} className={cn(!isCollapsed && 'mr-3 shrink-0')} />
-            {!isCollapsed && 'Reset'}
-          </button>
+              {content(true)}
+            </motion.aside>
+          </>
         )}
-      </div>
-    </aside>
+      </AnimatePresence>
+    </>
   );
-};
+}

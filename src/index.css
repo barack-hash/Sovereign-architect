@@ -1,78 +1,48 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap');
-@import "tailwindcss";
+/* @import rules must come first, before any other rule. */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+@import 'tailwindcss';
 
 @theme {
-  --font-headline: "Space Grotesk", sans-serif;
-  --font-sans: "Inter", sans-serif;
-  --font-terminal: "JetBrains Mono", ui-monospace, monospace;
+  --font-headline: 'Space Grotesk', sans-serif;
+  --font-sans: 'Inter', sans-serif;
 
   --color-surface-lowest: #0e0e10;
   --color-surface-dim: #131315;
   --color-surface: #131315;
   --color-surface-container: #201f22;
   --color-surface-highest: #353437;
-  
+
   --color-primary: #4be277;
   --color-on-primary: #003915;
   --color-secondary: #ffb690;
   --color-on-surface: #e5e1e4;
   --color-on-surface-variant: #bccbb9;
   --color-outline-variant: rgba(61, 74, 61, 0.2);
+
+  /* Referenced by the old Daily Log; kept so `text-error` resolves. */
+  --color-error: #ff4444;
 }
 
 @layer base {
   body {
     @apply bg-surface-lowest text-on-surface font-sans antialiased overflow-hidden;
+    /* Respect notch/home-indicator insets when installed to a phone home screen. */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+      env(safe-area-inset-left);
   }
 
-  /** Phase 71: reduce accidental double-tap zoom on interactive controls */
-  button,
-  [role='button'],
-  input[type='button'],
-  input[type='submit'],
-  input[type='reset'],
-  label[for] {
-    touch-action: manipulation;
+  /* iOS bounces the whole document when an inner pane hits its scroll end;
+     containing the chain keeps the app shell fixed the way it is on desktop. */
+  .terminal-scroll {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
 }
 
 @layer utilities {
-  .touch-manipulation {
-    touch-action: manipulation;
-  }
-
-  .font-terminal {
-    font-family: var(--font-terminal);
-  }
-
-  /** Phase 65: CRT-style scanlines behind content (pointer-events none). */
-  .crt-terminal-scanlines {
-    position: relative;
-    isolation: isolate;
-  }
-  .crt-terminal-scanlines > * {
-    position: relative;
-    z-index: 2;
-  }
-  .crt-terminal-scanlines::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-    pointer-events: none;
-    background: repeating-linear-gradient(
-      0deg,
-      rgba(0, 0, 0, 0.11),
-      rgba(0, 0, 0, 0.11) 1px,
-      transparent 1px,
-      transparent 4px
-    );
-    opacity: 0.45;
-    mix-blend-mode: multiply;
-  }
-
   .terminal-scroll::-webkit-scrollbar {
-    width: 4px;
+    width: 5px;
+    height: 5px;
   }
   .terminal-scroll::-webkit-scrollbar-track {
     background: #0e0e10;
@@ -80,318 +50,93 @@
   .terminal-scroll::-webkit-scrollbar-thumb {
     background: #3d4a3d;
   }
-  
-  .animate-marquee {
-    animation: marquee 20s linear infinite;
+  .terminal-scroll::-webkit-scrollbar-thumb:hover {
+    background: #4be277;
   }
 
-  /* Step 3 / Operation Synchronicity: content fade (Tailwind plugin-free) */
-  .animate-in {
-    animation-duration: 300ms;
-    animation-timing-function: ease-out;
-    animation-fill-mode: both;
+  .animate-marquee {
+    animation: marquee 40s linear infinite;
   }
-  .fade-in {
-    animation-name: content-fade-in;
+  .animate-marquee:hover {
+    animation-play-state: paused;
   }
 }
 
 @keyframes marquee {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-
-@keyframes content-fade-in {
-  from {
-    opacity: 0;
+  0% {
+    transform: translateX(0);
   }
-  to {
-    opacity: 1;
-  }
-}
-
-/* Scenario planner: subtle pulsing / glitch-adjacent border on canvas nodes */
-@keyframes ghost-border-pulse {
-  0%,
   100% {
-    box-shadow:
-      0 0 0 1px rgba(16, 185, 129, 0.35),
-      0 0 14px rgba(16, 185, 129, 0.12);
-  }
-  40% {
-    box-shadow:
-      0 0 0 1px rgba(168, 85, 247, 0.45),
-      0 0 18px rgba(168, 85, 247, 0.18);
-  }
-  70% {
-    box-shadow:
-      0 0 0 1px rgba(16, 185, 129, 0.25),
-      0 0 10px rgba(16, 185, 129, 0.1);
+    transform: translateX(-50%);
   }
 }
 
-.ghost-simulation-node {
-  animation: ghost-border-pulse 2.2s ease-in-out infinite;
-}
-
-/* Goals / Mission Profiles: pulse indicators */
-@keyframes mission-emerald-glow {
-  0%,
-  100% {
-    box-shadow:
-      0 0 10px rgba(16, 185, 129, 0.45),
-      0 0 18px rgba(52, 211, 153, 0.2);
-    background-color: rgba(52, 211, 153, 0.95);
-  }
-  50% {
-    box-shadow:
-      0 0 16px rgba(16, 185, 129, 0.65),
-      0 0 28px rgba(52, 211, 153, 0.35);
-    background-color: rgba(16, 185, 129, 1);
-  }
-}
-
-@keyframes mission-blood-pulse {
-  0%,
-  100% {
-    box-shadow:
-      0 0 12px rgba(220, 38, 38, 0.55),
-      0 0 20px rgba(185, 28, 28, 0.25);
-    background-color: rgba(248, 113, 113, 0.95);
-    transform: scale(1);
-  }
-  50% {
-    box-shadow:
-      0 0 20px rgba(220, 38, 38, 0.75),
-      0 0 32px rgba(127, 29, 29, 0.35);
-    background-color: rgba(220, 38, 38, 1);
-    transform: scale(1.08);
-  }
-}
-
-.mission-pulse-on-track {
-  animation: mission-emerald-glow 2.4s ease-in-out infinite;
-}
-
-.mission-pulse-fail {
-  animation: mission-blood-pulse 1.15s ease-in-out infinite;
-}
-
-/* Phase 69: Pentagon capital cards — emerald breathe vs red jitter */
-@keyframes pentagon-breathe {
-  0%,
-  100% {
-    box-shadow:
-      0 0 0 1px rgba(74, 222, 128, 0.25),
-      0 0 16px rgba(16, 185, 129, 0.12);
-  }
-  50% {
-    box-shadow:
-      0 0 0 1px rgba(74, 222, 128, 0.45),
-      0 0 22px rgba(16, 185, 129, 0.22);
-  }
-}
-
-@keyframes pentagon-jitter {
-  0%,
-  100% {
-    transform: translate(0, 0);
-    box-shadow:
-      0 0 0 1px rgba(239, 68, 68, 0.35),
-      0 0 12px rgba(220, 38, 38, 0.15);
-  }
-  25% {
-    transform: translate(0.5px, -0.5px);
-  }
-  50% {
-    transform: translate(-0.5px, 0.5px);
-    box-shadow:
-      0 0 0 1px rgba(239, 68, 68, 0.5),
-      0 0 18px rgba(220, 38, 38, 0.22);
-  }
-  75% {
-    transform: translate(0.4px, 0.3px);
-  }
-}
-
-.pentagon-pulse-optimal {
-  animation: pentagon-breathe 3.2s ease-in-out infinite;
-}
-
-.pentagon-pulse-critical {
-  animation: pentagon-jitter 0.85s ease-in-out infinite;
-}
-
-/* Recharts radar: keep axis labels from hugging the viewport edge beside the sidebar rail */
-.recharts-polar-angle-axis-tick-value {
-  dominant-baseline: central;
-}
-
-/* Daily Log: thumb-friendly protocol scrub (mobile-first) */
-input[type='range'].protocol-scrub-slider {
-  height: 1rem;
-  border-radius: 9999px;
-  appearance: none;
-  background: rgba(255, 255, 255, 0.1);
-  accent-color: var(--color-primary);
-}
-input[type='range'].protocol-scrub-slider::-webkit-slider-thumb {
-  appearance: none;
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: 9999px;
-  background: var(--color-primary);
-  border: 2px solid rgba(0, 0, 0, 0.35);
-  box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.35);
-}
-input[type='range'].protocol-scrub-slider::-moz-range-thumb {
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: 9999px;
-  background: var(--color-primary);
-  border: 2px solid rgba(0, 0, 0, 0.35);
-}
-@media (min-width: 768px) {
-  input[type='range'].protocol-scrub-slider {
-    height: 0.5rem;
-  }
-  input[type='range'].protocol-scrub-slider::-webkit-slider-thumb {
-    width: 0.875rem;
-    height: 0.875rem;
-  }
-  input[type='range'].protocol-scrub-slider::-moz-range-thumb {
-    width: 0.875rem;
-    height: 0.875rem;
-  }
-}
-
-/* Safety Protocols: range sliders + commit flash */
-input[type='range'].protocol-range::-webkit-slider-thumb {
+/*
+ * Touch-friendly range inputs.
+ *
+ * The design wants a hairline track, but a 1px-tall input is impossible to grab
+ * with a finger. The input keeps a real height (so the hit area is large) while
+ * the track is drawn thin, and the thumb grows on coarse pointers.
+ */
+.slider-touch {
   -webkit-appearance: none;
   appearance: none;
-  width: 16px;
-  height: 16px;
+  background: transparent;
+  height: 2.25rem;
+  touch-action: none;
+}
+.slider-touch::-webkit-slider-runnable-track {
+  height: 2px;
+  background: #353437;
+}
+.slider-touch::-moz-range-track {
+  height: 2px;
+  background: #353437;
+}
+.slider-touch::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -6px;
   border-radius: 9999px;
-  background: linear-gradient(180deg, #faf8f5, #c4c2b8);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  box-shadow: 0 0 12px rgba(245, 245, 240, 0.22);
-  cursor: grab;
+  background: currentColor;
+  color: inherit;
 }
-
-input[type='range'].protocol-range::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
+.slider-touch::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
   border-radius: 9999px;
-  background: linear-gradient(180deg, #faf8f5, #c4c2b8);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  box-shadow: 0 0 12px rgba(245, 245, 240, 0.22);
-  cursor: grab;
+  background: currentColor;
 }
-
-input[type='range'].protocol-range-breach::-webkit-slider-thumb {
-  animation: mission-blood-pulse 1.15s ease-in-out infinite;
-  background: #dc2626;
-  border-color: rgba(127, 29, 29, 0.85);
-}
-
-input[type='range'].protocol-range-breach::-moz-range-thumb {
-  animation: mission-blood-pulse 1.15s ease-in-out infinite;
-  background: #dc2626;
-  border-color: rgba(127, 29, 29, 0.85);
-}
-
-@keyframes protocol-shutter-flash {
-  0% {
-    opacity: 0;
+@media (pointer: coarse) {
+  .slider-touch::-webkit-slider-thumb {
+    width: 22px;
+    height: 22px;
+    margin-top: -10px;
   }
-  32% {
-    opacity: 0.9;
+  .slider-touch::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
   }
-  100% {
-    opacity: 0;
+}
+.slider-touch:disabled {
+  opacity: 0.4;
+}
+
+@media (min-width: 768px) {
+  .slider-touch {
+    height: 1.25rem;
   }
 }
 
-.protocol-shutter-flash {
-  animation: protocol-shutter-flash 0.52s ease-out forwards;
-  mix-blend-mode: overlay;
+/* React Flow reads these to theme its own chrome. */
+.react-flow__controls-button {
+  background: #201f22 !important;
+  border-bottom: 1px solid rgba(61, 74, 61, 0.3) !important;
+  fill: #bccbb9 !important;
 }
-
-/* Phase 66: tactical coordinate grid + crisis glitch; per-node focus (dim via inline opacity + filter here) */
-@keyframes tactical-grid-glitch {
-  0%,
-  100% {
-    transform: translate(0, 0);
-    opacity: 1;
-    background-position: 0 0;
-  }
-  20% {
-    transform: translate(0.5px, -0.5px);
-    opacity: 0.92;
-    background-position: 1px 0;
-  }
-  40% {
-    transform: translate(-0.5px, 0.5px);
-    opacity: 0.97;
-    background-position: -1px 1px;
-  }
-  60% {
-    transform: translate(0.3px, 0.3px);
-    opacity: 0.94;
-    background-position: 0 -1px;
-  }
-  80% {
-    transform: translate(-0.3px, -0.2px);
-    opacity: 0.98;
-    background-position: 2px 0;
-  }
-}
-
-.tactical-coordinate-grid {
-  background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
-  background-size: 40px 40px;
-  background-position: 0 0;
-}
-
-.tactical-grid-crisis {
-  animation: tactical-grid-glitch 2.8s ease-in-out infinite;
-  will-change: transform, opacity, background-position;
-}
-
-.canvas-node-dim {
-  filter: grayscale(0.35) blur(0.6px);
-}
-
-.canvas-node-focus {
-  filter: none;
-}
-
-/* Daily Log / terminal: subtle matrix-style data fog (behind content, pointer-events none) */
-@keyframes terminal-fog-drift {
-  0% {
-    background-position: 0 0, 0 0;
-    opacity: 0.45;
-  }
-  50% {
-    opacity: 0.6;
-  }
-  100% {
-    background-position: 80px 40px, -60px 30px;
-    opacity: 0.45;
-  }
-}
-
-.terminal-data-fog-host .terminal-data-fog {
-  background-image:
-    linear-gradient(rgba(74, 222, 128, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(74, 222, 128, 0.04) 1px, transparent 1px),
-    repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(16, 185, 129, 0.03) 2px,
-      rgba(16, 185, 129, 0.03) 3px
-    );
-  background-size: 48px 48px, 48px 48px, 100% 100%;
-  animation: terminal-fog-drift 22s ease-in-out infinite;
+.react-flow__controls-button:hover {
+  background: #353437 !important;
 }
