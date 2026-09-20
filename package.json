@@ -13,6 +13,9 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@clerk/backend": "^3.18.1",
+    "@clerk/react": "^6.16.1",
+    "@neondatabase/serverless": "^1.1.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
     "@xyflow/react": "^12.10.2",
