@@ -30,7 +30,11 @@ const STEPS = [
   },
 ] as const;
 
-export function LandingView({ onShowAbout }: { onShowAbout: () => void }) {
+export function LandingView({
+  onShowPage,
+}: {
+  onShowPage: (page: 'about' | 'privacy' | 'terms') => void;
+}) {
   return (
     <div className="min-h-[100dvh] w-full bg-neutral-950 overflow-y-auto">
       <div className="max-w-4xl mx-auto px-5 sm:px-8 py-14 sm:py-20 space-y-16 sm:space-y-24">
@@ -96,13 +100,22 @@ export function LandingView({ onShowAbout }: { onShowAbout: () => void }) {
         </section>
 
         {/* Footer */}
-        <footer className="flex items-center justify-center gap-6 pb-6">
-          <button
-            onClick={onShowAbout}
-            className="text-on-surface-variant hover:text-primary font-mono text-[10px] uppercase tracking-[0.2em] transition-colors"
-          >
-            About & dedication
-          </button>
+        <footer className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 pb-6">
+          {(
+            [
+              ['about', 'About & dedication'],
+              ['privacy', 'Privacy'],
+              ['terms', 'Terms'],
+            ] as const
+          ).map(([page, label]) => (
+            <button
+              key={page}
+              onClick={() => onShowPage(page)}
+              className="text-on-surface-variant hover:text-primary font-mono text-[10px] uppercase tracking-[0.2em] transition-colors"
+            >
+              {label}
+            </button>
+          ))}
         </footer>
       </div>
     </div>

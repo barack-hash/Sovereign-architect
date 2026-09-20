@@ -31,6 +31,7 @@ interface Props {
   onUpdatePlan: (patch: Partial<Plan>, historyKey?: string) => void;
   /** Opens the template picker; falls back to a blank plan when absent. */
   onRequestNewPlan?: () => void;
+  onShowPage?: (page: 'about' | 'privacy' | 'terms') => void;
 }
 
 export function SettingsView({
@@ -39,12 +40,63 @@ export function SettingsView({
   onUpdateAssumptions,
   onUpdatePlan,
   onRequestNewPlan,
+  onShowPage,
 }: Props) {
   const { assumptions } = plan;
   const fileRef = useRef<HTMLInputElement>(null);
   const [snapshotName, setSnapshotName] = useState('');
   const [importError, setImportError] = useState<string | null>(null);
+  const [accountBusy, setAccountBusy] = useState(false);
+  const [accountError, setAccountError] = useState<string | null>(null);
   const commit = controller.commitHistory;
+
+  const exportAccount = async () => {
+    if (!controller.api) return;
+    setAccountBusy(true);
+    setAccountError(null);
+    try {
+      const data = await controller.api.exportAccount();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'sovereign-account-export.json';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch {
+      setAccountError('The export could not be fetched. Check your connection and try again.');
+    } finally {
+      setAccountBusy(false);
+    }
+  };
+
+  const deleteAccount = async () => {
+    if (!controller.api) return;
+    const typed = window.prompt(
+      'This permanently deletes every plan, every snapshot, and your account itself. ' +
+        'It cannot be undone. Type DELETE to confirm.',
+    );
+    if (typed !== 'DELETE') return;
+    setAccountBusy(true);
+    setAccountError(null);
+    try {
+      await controller.api.deleteAccount();
+      // The account is gone; clear this browser's cache of it and start over.
+      try {
+        for (const key of Object.keys(window.localStorage)) {
+          if (key.startsWith('sovereign.account.')) window.localStorage.removeItem(key);
+        }
+      } catch {
+        // Cache clearing is best-effort; the server-side data is already gone.
+      }
+      window.location.href = '/';
+    } catch {
+      setAccountBusy(false);
+      setAccountError('Deletion failed. Nothing was removed; try again or contact support.');
+    }
+  };
 
   const handleImport = async (file: File | undefined) => {
     if (!file) return;
@@ -454,6 +506,60 @@ export function SettingsView({
             : 'Import accepts both this version’s format and a v1 export, which is converted on the way in. Exporting is the only backup — clearing browser data erases everything.'}
         </Explain>
       </Panel>
+
+      {controller.canManagePlans && controller.api && (
+        <Panel title="Account" subtitle="Your data, and your way out">
+          <div className="flex flex-wrap gap-2 md:gap-3">
+            <Button
+              onClick={() => void exportAccount()}
+              disabled={accountBusy}
+              className="inline-flex items-center justify-center min-h-10 md:min-h-0"
+            >
+              <span className="flex items-center gap-2">
+                <Download size={11} /> Export everything
+              </span>
+            </Button>
+
+            <Button
+              variant="danger"
+              onClick={() => void deleteAccount()}
+              disabled={accountBusy}
+              className="inline-flex items-center justify-center min-h-10 md:min-h-0"
+            >
+              <span className="flex items-center gap-2">
+                <Trash2 size={11} /> Delete account & all data
+              </span>
+            </Button>
+          </div>
+
+          {accountError && <p className="mt-3 text-[10px] font-mono text-secondary">{accountError}</p>}
+
+          <Explain>
+            Export downloads every plan and snapshot your account holds as one JSON file. Deletion
+            removes all of it and the account itself, permanently and immediately.
+          </Explain>
+        </Panel>
+      )}
+
+      {onShowPage && (
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pb-2">
+          {(
+            [
+              ['about', 'About & dedication'],
+              ['privacy', 'Privacy'],
+              ['terms', 'Terms'],
+            ] as const
+          ).map(([page, label]) => (
+            <button
+              key={page}
+              onClick={() => onShowPage(page)}
+              className="text-on-surface-variant hover:text-primary font-mono text-[9px] uppercase tracking-[0.2em] transition-colors"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

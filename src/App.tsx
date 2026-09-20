@@ -14,6 +14,7 @@ import { Sidebar, TABS, type TabId } from './components/Sidebar';
 import { DedicationScreen } from './components/Dedication';
 import { LandingView } from './views/LandingView';
 import { AboutView } from './views/AboutView';
+import { PrivacyView, TermsView } from './views/LegalView';
 import { clerkEnabled, ownerUserId } from './lib/authConfig';
 import { DashboardView } from './views/DashboardView';
 import { CanvasView, layoutPosition, useNarrowViewport } from './views/CanvasView';
@@ -33,40 +34,45 @@ import { Badge } from './ui/primitives';
 import { hours, money, monthToken, percent } from './ui/format';
 import { cn } from './lib/utils';
 
-export default function App() {
-  const [showAbout, setShowAbout] = useState(false);
+export type InfoPage = 'about' | 'privacy' | 'terms';
 
-  if (showAbout) return <AboutView onBack={() => setShowAbout(false)} />;
+export default function App() {
+  const [page, setPage] = useState<InfoPage | null>(null);
+
+  const back = () => setPage(null);
+  if (page === 'about') return <AboutView onBack={back} />;
+  if (page === 'privacy') return <PrivacyView onBack={back} />;
+  if (page === 'terms') return <TermsView onBack={back} />;
 
   // No Clerk key configured: the app is local-only, exactly what it was
   // before accounts existed. The dedication still opens each session.
-  if (!clerkEnabled) return <LocalOnlyApp />;
+  if (!clerkEnabled) return <LocalOnlyApp onShowPage={setPage} />;
 
-  return <ClerkGate onShowAbout={() => setShowAbout(true)} />;
+  return <ClerkGate onShowPage={setPage} />;
 }
 
 /** Routes between the landing page and the workspace. Rendered only inside ClerkProvider. */
-function ClerkGate({ onShowAbout }: { onShowAbout: () => void }) {
+function ClerkGate({ onShowPage }: { onShowPage: (page: InfoPage) => void }) {
   const { isLoaded, isSignedIn } = useAuth();
 
   // While Clerk resolves the session, show the app's backdrop rather than
   // flashing the landing page at someone who is already signed in.
   if (!isLoaded) return <div className="h-[100dvh] w-full bg-neutral-950" />;
-  if (!isSignedIn) return <LandingView onShowAbout={onShowAbout} />;
-  return <AuthedApp />;
+  if (!isSignedIn) return <LandingView onShowPage={onShowPage} />;
+  return <AuthedApp onShowPage={onShowPage} />;
 }
 
-function LocalOnlyApp() {
+function LocalOnlyApp({ onShowPage }: { onShowPage: (page: InfoPage) => void }) {
   const [entered, setEntered] = useState(false);
   if (!entered) return <DedicationScreen onEnter={() => setEntered(true)} />;
-  return <Workspace auth={null} accountArea={null} />;
+  return <Workspace auth={null} accountArea={null} onShowPage={onShowPage} />;
 }
 
 /**
  * Signed-in shell. The dedication screen is personal: it appears only for
  * the owner's own account, once per session, before the workspace.
  */
-function AuthedApp() {
+function AuthedApp({ onShowPage }: { onShowPage: (page: InfoPage) => void }) {
   const { user } = useUser();
   const { userId, getToken } = useAuth();
   const [dedicationDone, setDedicationDone] = useState(false);
@@ -84,7 +90,14 @@ function AuthedApp() {
   }
 
   // Key by user so a sign-out/sign-in never leaks one account's state into another.
-  return <Workspace key={userId ?? 'anon'} auth={auth} accountArea={<UserButton />} />;
+  return (
+    <Workspace
+      key={userId ?? 'anon'}
+      auth={auth}
+      accountArea={<UserButton />}
+      onShowPage={onShowPage}
+    />
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -94,9 +107,11 @@ function AuthedApp() {
 function Workspace({
   auth,
   accountArea,
+  onShowPage,
 }: {
   auth: AuthContext | null;
   accountArea: React.ReactNode;
+  onShowPage: (page: InfoPage) => void;
 }) {
   const controller = usePlan(auth);
   const { plan, update, commitHistory, undo, redo } = controller;
@@ -371,6 +386,7 @@ function Workspace({
               plan={plan}
               controller={controller}
               onRequestNewPlan={() => setTemplatePicker('manual')}
+              onShowPage={onShowPage}
               onUpdateAssumptions={(patch: Partial<Assumptions>, historyKey?: string) =>
                 update((draft) => void Object.assign(draft.assumptions, patch), { historyKey })
               }
