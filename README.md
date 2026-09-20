@@ -22,12 +22,33 @@ npm run dev
 npm test
 ```
 
-Everything is stored in your browser's local storage. Nothing is sent anywhere,
-and there is no server. **Export your plan from Settings to back it up** —
-clearing site data erases everything.
+Without configuration the app runs in **local-only mode**: everything stays in
+your browser's local storage, nothing is sent anywhere, and Settings → Export
+is the only backup. With Clerk and Neon configured (below), plans live in your
+account, sync across devices, and keep working offline through a cached copy
+and a replay queue.
 
-The passcode gate is a curtain, not a safe: the codes are in the source and the
-data is unencrypted. It keeps a shoulder-surfer out, nothing more.
+## Accounts & backend setup
+
+The backend is a set of Vercel functions in `api/` (Clerk verifies the session
+token, Neon stores plans as jsonb — see `db/schema.sql`). To provision:
+
+1. **Neon**: create a project, run `db/schema.sql` against it, copy the
+   connection string.
+2. **Clerk**: create an application (sign-in options of your choice), copy the
+   publishable and secret keys.
+3. **Env vars** — locally in `.env.local`, in production on the Vercel project
+   (see `.env.example` for all of them):
+   - `VITE_CLERK_PUBLISHABLE_KEY` (browser)
+   - `CLERK_SECRET_KEY`, `DATABASE_URL`, `CLERK_AUTHORIZED_PARTIES` (server)
+   - `VITE_OWNER_USER_ID` (optional; shows the dedication screen to that
+     account only)
+4. **Local dev with the API**: `vercel dev` (serves the Vite app and the
+   functions together). Plain `npm run dev` still works — the app just runs in
+   local-only mode, or with a deployed API origin if you proxy `/api`.
+
+Never commit `.env.local`. The database connection string must never be
+`VITE_`-prefixed — Vite would ship it to every browser.
 
 ## The model
 
