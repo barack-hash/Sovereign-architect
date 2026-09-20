@@ -22,7 +22,8 @@ import { RiskView } from './views/RiskView';
 import { ConstraintsView } from './views/ConstraintsView';
 import { ExecutionView } from './views/ExecutionView';
 import { SettingsView } from './views/SettingsView';
-import { usePlan } from './state/usePlan';
+import { usePlan, type AuthContext } from './state/usePlan';
+import { ImportOfferModal } from './components/ImportOfferModal';
 import { useAnalysis } from './state/useAnalysis';
 import * as actions from './state/actions';
 import type { Assumptions, Constraint, Plan, PlanNode, TaskNode, Variant } from './engine';
@@ -57,7 +58,7 @@ function ClerkGate({ onShowAbout }: { onShowAbout: () => void }) {
 function LocalOnlyApp() {
   const [entered, setEntered] = useState(false);
   if (!entered) return <DedicationScreen onEnter={() => setEntered(true)} />;
-  return <Workspace accountArea={null} />;
+  return <Workspace auth={null} accountArea={null} />;
 }
 
 /**
@@ -66,22 +67,37 @@ function LocalOnlyApp() {
  */
 function AuthedApp() {
   const { user } = useUser();
+  const { userId, getToken } = useAuth();
   const [dedicationDone, setDedicationDone] = useState(false);
+
+  const auth = useMemo(
+    () => (userId ? { userId, getToken } : null),
+    // getToken is captured by reference inside usePlan; only the user matters here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [userId],
+  );
 
   const isOwner = ownerUserId !== undefined && user?.id === ownerUserId;
   if (isOwner && !dedicationDone) {
     return <DedicationScreen onEnter={() => setDedicationDone(true)} />;
   }
 
-  return <Workspace accountArea={<UserButton />} />;
+  // Key by user so a sign-out/sign-in never leaks one account's state into another.
+  return <Workspace key={userId ?? 'anon'} auth={auth} accountArea={<UserButton />} />;
 }
 
 // ---------------------------------------------------------------------------
 // Workspace
 // ---------------------------------------------------------------------------
 
-function Workspace({ accountArea }: { accountArea: React.ReactNode }) {
-  const controller = usePlan();
+function Workspace({
+  auth,
+  accountArea,
+}: {
+  auth: AuthContext | null;
+  accountArea: React.ReactNode;
+}) {
+  const controller = usePlan(auth);
   const { plan, update, commitHistory, undo, redo } = controller;
   const analysis = useAnalysis(plan);
 
@@ -242,6 +258,14 @@ function Workspace({ accountArea }: { accountArea: React.ReactNode }) {
         activeTab={tab}
         onSelect={setTab}
         planName={plan.name}
+        planList={controller.planList}
+        activePlanId={controller.activePlanId}
+        canManagePlans={controller.canManagePlans}
+        onSelectPlan={controller.selectPlan}
+        onCreatePlan={() => {
+          controller.createPlan();
+          flash('Started a new plan.');
+        }}
         mobileOpen={menuOpen}
         onMobileClose={() => setMenuOpen(false)}
       />
@@ -250,6 +274,7 @@ function Workspace({ accountArea }: { accountArea: React.ReactNode }) {
         <Header
           headline={headline}
           saveState={controller.saveState}
+          syncState={controller.syncState}
           accountArea={accountArea}
           issueCount={analysis.issues.filter((i) => i.severity === 'error').length}
           tabLabel={TABS.find((t) => t.id === tab)?.label ?? 'Settings'}
@@ -342,6 +367,16 @@ function Workspace({ accountArea }: { accountArea: React.ReactNode }) {
         <Ticker plan={plan} analysis={analysis} />
       </div>
 
+      {controller.importOfferOpen && (
+        <ImportOfferModal
+          onAccept={() => {
+            controller.acceptLocalImport();
+            flash('Your local plan is now in your account.');
+          }}
+          onDecline={controller.declineLocalImport}
+        />
+      )}
+
       <AnimatePresence>
         {toast && (
           <motion.div
@@ -372,6 +407,7 @@ function Workspace({ accountArea }: { accountArea: React.ReactNode }) {
 function Header({
   headline,
   saveState,
+  syncState,
   accountArea,
   issueCount,
   tabLabel,
@@ -379,6 +415,7 @@ function Header({
 }: {
   headline: { netWorth: number; freeHours: number; health: number; breaches: number; finish: number };
   saveState: 'idle' | 'saving' | 'saved';
+  syncState: 'local' | 'syncing' | 'synced' | 'offline' | 'error';
   accountArea: React.ReactNode;
   issueCount: number;
   tabLabel: string;
@@ -424,6 +461,25 @@ function Header({
     </span>
   );
 
+  // Quiet when healthy: only trouble ('offline', 'error') earns a permanent
+  // label. Work is safe locally in both cases; the queue uploads on return.
+  const syncBadge =
+    syncState === 'offline' ? (
+      <span
+        className="text-[9px] font-mono uppercase tracking-wider text-amber-400"
+        title="No connection. Changes are saved on this device and will upload when you're back online."
+      >
+        offline
+      </span>
+    ) : syncState === 'error' ? (
+      <span
+        className="text-[9px] font-mono uppercase tracking-wider text-secondary"
+        title="The server could not be reached or rejected the last sync. Changes are safe on this device; sync will retry."
+      >
+        sync error
+      </span>
+    ) : null;
+
   return (
     <header className="bg-surface/90 backdrop-blur border-b border-outline-variant/20 shrink-0 z-10">
       {/* Mobile: title bar */}
@@ -439,6 +495,7 @@ function Header({
         <span className="font-headline text-sm text-on-surface truncate flex-1">{tabLabel}</span>
 
         <div className="flex items-center gap-2 shrink-0">
+          {syncBadge}
           {saveBadge}
           {status}
           {accountArea && <div className="flex items-center -mr-1">{accountArea}</div>}
@@ -464,6 +521,7 @@ function Header({
           ) : (
             <Badge tone="good">NOMINAL</Badge>
           )}
+          {syncBadge}
           {saveBadge}
           {accountArea && <div className="flex items-center">{accountArea}</div>}
         </div>

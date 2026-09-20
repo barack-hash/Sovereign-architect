@@ -6,6 +6,7 @@ import {
   Lock,
   Network,
   PlayCircle,
+  Plus,
   Settings,
   X,
 } from 'lucide-react';
@@ -34,12 +35,29 @@ interface Props {
   activeTab: TabId;
   onSelect: (tab: TabId) => void;
   planName: string;
+  planList: Array<{ id: string; name: string }>;
+  activePlanId: string;
+  /** Signed-in accounts can hold several plans; local mode has exactly one. */
+  canManagePlans: boolean;
+  onSelectPlan: (id: string) => void;
+  onCreatePlan: () => void;
   /** Mobile drawer state. Ignored at md and above, where the rail is always present. */
   mobileOpen: boolean;
   onMobileClose: () => void;
 }
 
-export function Sidebar({ activeTab, onSelect, planName, mobileOpen, onMobileClose }: Props) {
+export function Sidebar({
+  activeTab,
+  onSelect,
+  planName,
+  planList,
+  activePlanId,
+  canManagePlans,
+  onSelectPlan,
+  onCreatePlan,
+  mobileOpen,
+  onMobileClose,
+}: Props) {
   const [collapsed, setCollapsed] = useState(false);
 
   // Selecting a destination on a phone should also dismiss the drawer, otherwise
@@ -57,13 +75,38 @@ export function Sidebar({ activeTab, onSelect, planName, mobileOpen, onMobileClo
       <>
         <div className={cn('flex items-center justify-between mb-6 md:mb-8', narrow ? 'px-3' : 'px-5 md:px-6')}>
           {!narrow && (
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <h1 className="text-primary font-headline font-bold tracking-tighter text-xl leading-none">
                 SOVEREIGN
               </h1>
-              <p className="text-[9px] font-mono uppercase tracking-[0.15em] text-on-surface-variant mt-1.5 truncate">
-                {planName}
-              </p>
+              {canManagePlans ? (
+                <div className="flex items-center gap-1 mt-1.5 -ml-1">
+                  <select
+                    value={activePlanId}
+                    onChange={(e) => onSelectPlan(e.target.value)}
+                    aria-label="Switch plan"
+                    className="min-w-0 flex-1 bg-transparent border-0 text-[9px] font-mono uppercase tracking-[0.15em] text-on-surface-variant hover:text-primary focus:outline-none cursor-pointer truncate px-1 py-0.5"
+                  >
+                    {planList.map((p) => (
+                      <option key={p.id} value={p.id} className="bg-surface text-on-surface">
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={onCreatePlan}
+                    title="New plan"
+                    aria-label="New plan"
+                    className="p-1 text-on-surface-variant hover:text-primary transition-colors shrink-0"
+                  >
+                    <Plus size={12} />
+                  </button>
+                </div>
+              ) : (
+                <p className="text-[9px] font-mono uppercase tracking-[0.15em] text-on-surface-variant mt-1.5 truncate">
+                  {planName}
+                </p>
+              )}
             </div>
           )}
 

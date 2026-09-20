@@ -7,7 +7,7 @@
  */
 
 import React, { useRef, useState } from 'react';
-import { Download, RotateCcw, Save, Trash2, Upload } from 'lucide-react';
+import { Download, HardDriveUpload, Plus, RotateCcw, Save, Trash2, Upload } from 'lucide-react';
 import type { Assumptions, Plan } from '../engine';
 import type { PlanController } from '../state/usePlan';
 import {
@@ -305,7 +305,95 @@ export function SettingsView({ plan, controller, onUpdateAssumptions, onUpdatePl
         </Panel>
       </div>
 
-      <Panel title="Data" subtitle="Everything lives in this browser; nothing is sent anywhere">
+      {controller.canManagePlans && (
+        <Panel title="Plans" subtitle="Every plan in your account">
+          <div className="space-y-3">
+            <div className="space-y-1.5 max-h-64 overflow-y-auto terminal-scroll pr-1">
+              {controller.planList.map((entry) => {
+                const active = entry.id === controller.activePlanId;
+                return (
+                  <div
+                    key={entry.id}
+                    className="flex items-center justify-between gap-2 md:gap-3 px-3 py-2 bg-surface-lowest border border-outline-variant/20 group"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[10px] font-headline font-bold uppercase text-on-surface truncate">
+                        {entry.name}
+                      </span>
+                      {active && (
+                        <span className="block text-[9px] font-mono text-primary uppercase">
+                          active
+                        </span>
+                      )}
+                    </span>
+                    <span className="flex items-center gap-1 md:gap-2 shrink-0">
+                      {!active && (
+                        <button
+                          onClick={() => controller.selectPlan(entry.id)}
+                          className="inline-flex items-center justify-center min-h-10 md:min-h-0 px-2 md:px-0 text-[9px] font-mono font-bold uppercase text-primary hover:brightness-125"
+                        >
+                          Open
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Delete the plan "${entry.name}" and its snapshots everywhere? This cannot be undone.`,
+                            )
+                          ) {
+                            controller.deletePlan(entry.id);
+                          }
+                        }}
+                        title="Delete plan"
+                        className="inline-flex items-center justify-center min-h-10 md:min-h-0 min-w-10 md:min-w-auto px-2 md:px-0 text-secondary opacity-100 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-wrap gap-2 md:gap-3">
+              <Button
+                onClick={() => controller.createPlan()}
+                className="inline-flex items-center justify-center min-h-10 md:min-h-0"
+              >
+                <span className="flex items-center gap-2">
+                  <Plus size={11} /> New plan
+                </span>
+              </Button>
+
+              {controller.localImportAvailable && (
+                <Button
+                  onClick={controller.acceptLocalImport}
+                  className="inline-flex items-center justify-center min-h-10 md:min-h-0"
+                >
+                  <span className="flex items-center gap-2">
+                    <HardDriveUpload size={11} /> Import this browser's local plan
+                  </span>
+                </Button>
+              )}
+            </div>
+
+            <Explain>
+              Deleting a plan removes it from your account and every device. Deleting the last one
+              starts a fresh default plan.
+            </Explain>
+          </div>
+        </Panel>
+      )}
+
+      <Panel
+        title="Data"
+        subtitle={
+          controller.canManagePlans
+            ? 'Plans sync to your account, with a copy cached in this browser'
+            : 'Everything lives in this browser; nothing is sent anywhere'
+        }
+      >
         {/* Wraps to two rows at 390px; each button keeps a 40px touch target. */}
         <div className="flex flex-wrap gap-2 md:gap-3">
           <Button
@@ -353,8 +441,9 @@ export function SettingsView({ plan, controller, onUpdateAssumptions, onUpdatePl
         )}
 
         <Explain>
-          Import accepts both this version's format and a v1 export, which is converted on the way
-          in. Exporting is the only backup — clearing browser data erases everything.
+          {controller.canManagePlans
+            ? "Import accepts both this version's format and a v1 export, and replaces the current plan's contents. Your plans are backed up in your account either way."
+            : 'Import accepts both this version’s format and a v1 export, which is converted on the way in. Exporting is the only backup — clearing browser data erases everything.'}
         </Explain>
       </Panel>
     </div>
