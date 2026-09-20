@@ -7,9 +7,14 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Info, Lock, Menu, X } from 'lucide-react';
+import { CheckCircle2, Info, Menu, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
+import { UserButton, useAuth, useUser } from '@clerk/react';
 import { Sidebar, TABS, type TabId } from './components/Sidebar';
+import { DedicationScreen } from './components/Dedication';
+import { LandingView } from './views/LandingView';
+import { AboutView } from './views/AboutView';
+import { clerkEnabled, ownerUserId } from './lib/authConfig';
 import { DashboardView } from './views/DashboardView';
 import { CanvasView, layoutPosition, useNarrowViewport } from './views/CanvasView';
 import { ScenarioLabView } from './views/ScenarioLabView';
@@ -26,49 +31,56 @@ import { Badge } from './ui/primitives';
 import { hours, money, monthToken, percent } from './ui/format';
 import { cn } from './lib/utils';
 
-const MASTER_PASSCODE = 'ARCHITECT-01';
-const GUEST_PASSCODE = 'GUEST-24H';
-const GUEST_WINDOW_MS = 24 * 60 * 60 * 1000;
-
 export default function App() {
-  const [unlocked, setUnlocked] = useState(false);
-  const [showDedication, setShowDedication] = useState(true);
+  const [showAbout, setShowAbout] = useState(false);
 
-  useEffect(() => {
-    const mode = localStorage.getItem('sovereign_unlocked');
-    if (mode === 'master') {
-      setUnlocked(true);
-    } else if (mode === 'guest') {
-      const expiry = Number(localStorage.getItem('sovereign_guest_expires') ?? 0);
-      if (Date.now() < expiry) {
-        setUnlocked(true);
-      } else {
-        localStorage.removeItem('sovereign_unlocked');
-        localStorage.removeItem('sovereign_guest_expires');
-      }
-    }
-  }, []);
+  if (showAbout) return <AboutView onBack={() => setShowAbout(false)} />;
 
-  if (!unlocked) return <LockScreen onUnlock={() => setUnlocked(true)} />;
-  if (showDedication) return <Dedication onEnter={() => setShowDedication(false)} />;
+  // No Clerk key configured: the app is local-only, exactly what it was
+  // before accounts existed. The dedication still opens each session.
+  if (!clerkEnabled) return <LocalOnlyApp />;
 
-  return (
-    <Workspace
-      onLock={() => {
-        localStorage.removeItem('sovereign_unlocked');
-        localStorage.removeItem('sovereign_guest_expires');
-        setUnlocked(false);
-        setShowDedication(true);
-      }}
-    />
-  );
+  return <ClerkGate onShowAbout={() => setShowAbout(true)} />;
+}
+
+/** Routes between the landing page and the workspace. Rendered only inside ClerkProvider. */
+function ClerkGate({ onShowAbout }: { onShowAbout: () => void }) {
+  const { isLoaded, isSignedIn } = useAuth();
+
+  // While Clerk resolves the session, show the app's backdrop rather than
+  // flashing the landing page at someone who is already signed in.
+  if (!isLoaded) return <div className="h-[100dvh] w-full bg-neutral-950" />;
+  if (!isSignedIn) return <LandingView onShowAbout={onShowAbout} />;
+  return <AuthedApp />;
+}
+
+function LocalOnlyApp() {
+  const [entered, setEntered] = useState(false);
+  if (!entered) return <DedicationScreen onEnter={() => setEntered(true)} />;
+  return <Workspace accountArea={null} />;
+}
+
+/**
+ * Signed-in shell. The dedication screen is personal: it appears only for
+ * the owner's own account, once per session, before the workspace.
+ */
+function AuthedApp() {
+  const { user } = useUser();
+  const [dedicationDone, setDedicationDone] = useState(false);
+
+  const isOwner = ownerUserId !== undefined && user?.id === ownerUserId;
+  if (isOwner && !dedicationDone) {
+    return <DedicationScreen onEnter={() => setDedicationDone(true)} />;
+  }
+
+  return <Workspace accountArea={<UserButton />} />;
 }
 
 // ---------------------------------------------------------------------------
 // Workspace
 // ---------------------------------------------------------------------------
 
-function Workspace({ onLock }: { onLock: () => void }) {
+function Workspace({ accountArea }: { accountArea: React.ReactNode }) {
   const controller = usePlan();
   const { plan, update, commitHistory, undo, redo } = controller;
   const analysis = useAnalysis(plan);
@@ -238,7 +250,7 @@ function Workspace({ onLock }: { onLock: () => void }) {
         <Header
           headline={headline}
           saveState={controller.saveState}
-          onLock={onLock}
+          accountArea={accountArea}
           issueCount={analysis.issues.filter((i) => i.severity === 'error').length}
           tabLabel={TABS.find((t) => t.id === tab)?.label ?? 'Settings'}
           onOpenMenu={() => setMenuOpen(true)}
@@ -360,14 +372,14 @@ function Workspace({ onLock }: { onLock: () => void }) {
 function Header({
   headline,
   saveState,
-  onLock,
+  accountArea,
   issueCount,
   tabLabel,
   onOpenMenu,
 }: {
   headline: { netWorth: number; freeHours: number; health: number; breaches: number; finish: number };
   saveState: 'idle' | 'saving' | 'saved';
-  onLock: () => void;
+  accountArea: React.ReactNode;
   issueCount: number;
   tabLabel: string;
   onOpenMenu: () => void;
@@ -429,13 +441,7 @@ function Header({
         <div className="flex items-center gap-2 shrink-0">
           {saveBadge}
           {status}
-          <button
-            onClick={onLock}
-            aria-label="Lock"
-            className="flex items-center justify-center min-h-10 min-w-10 -mr-1 border border-secondary/40 text-secondary hover:bg-secondary/10 transition-colors"
-          >
-            <Lock size={14} />
-          </button>
+          {accountArea && <div className="flex items-center -mr-1">{accountArea}</div>}
         </div>
       </div>
 
@@ -459,12 +465,7 @@ function Header({
             <Badge tone="good">NOMINAL</Badge>
           )}
           {saveBadge}
-          <button
-            onClick={onLock}
-            className="flex items-center gap-1.5 px-3 py-1.5 border border-secondary/40 text-secondary hover:bg-secondary/10 transition-colors text-[9px] font-mono font-bold uppercase tracking-wider"
-          >
-            <Lock size={10} /> Lock
-          </button>
+          {accountArea && <div className="flex items-center">{accountArea}</div>}
         </div>
       </div>
     </header>
@@ -558,118 +559,5 @@ function Ticker({ plan, analysis }: { plan: Plan; analysis: ReturnType<typeof us
         {row('b')}
       </div>
     </footer>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Gate
-// ---------------------------------------------------------------------------
-
-function LockScreen({ onUnlock }: { onUnlock: () => void }) {
-  const [code, setCode] = useState('');
-  const [error, setError] = useState(false);
-
-  const attempt = () => {
-    if (code === MASTER_PASSCODE) {
-      localStorage.setItem('sovereign_unlocked', 'master');
-      onUnlock();
-    } else if (code === GUEST_PASSCODE) {
-      localStorage.setItem('sovereign_unlocked', 'guest');
-      localStorage.setItem('sovereign_guest_expires', String(Date.now() + GUEST_WINDOW_MS));
-      onUnlock();
-    } else {
-      setError(true);
-      setTimeout(() => setError(false), 1800);
-    }
-    setCode('');
-  };
-
-  return (
-    <div className="h-[100dvh] w-full bg-neutral-950 flex items-center justify-center p-6 overflow-y-auto">
-      <div className="w-full max-w-sm space-y-8 text-center">
-        <div>
-          <div className="w-14 h-14 border-2 border-primary flex items-center justify-center text-primary font-black text-2xl mx-auto mb-6">
-            S
-          </div>
-          <h1 className="text-primary font-headline font-bold text-lg tracking-[0.3em] uppercase">
-            System Locked
-          </h1>
-          <p className="text-on-surface-variant font-mono text-[9px] uppercase tracking-[0.2em] mt-2">
-            Deterministic Life Architect
-          </p>
-        </div>
-
-        <div className="space-y-3">
-          <input
-            type="password"
-            value={code}
-            autoFocus
-            onChange={(e) => setCode(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && attempt()}
-            placeholder="ENTER PASSCODE"
-            className={cn(
-              'w-full bg-neutral-900 border px-4 py-3 text-primary font-mono text-sm text-center focus:outline-none transition-colors placeholder:text-on-surface-variant/30',
-              error ? 'border-secondary' : 'border-outline-variant/30 focus:border-primary',
-            )}
-          />
-          <button
-            onClick={attempt}
-            className="w-full bg-primary text-on-primary py-3 font-headline font-bold text-[10px] tracking-[0.2em] uppercase hover:brightness-110 transition-all"
-          >
-            [ Initiate Handshake ]
-          </button>
-          {error && (
-            <p className="text-[10px] font-mono text-secondary uppercase tracking-wider">
-              Passcode not recognised
-            </p>
-          )}
-        </div>
-
-        <p className="text-[8px] font-mono text-on-surface-variant/40 uppercase tracking-[0.2em] leading-relaxed">
-          This gate is a curtain, not a safe. Everything is stored unencrypted in this browser.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function Dedication({ onEnter }: { onEnter: () => void }) {
-  return (
-    <div className="h-[100dvh] w-full bg-neutral-950 flex items-center justify-center p-5 sm:p-6 relative overflow-y-auto">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-3/4 bg-primary/5 blur-[120px] rounded-full pointer-events-none" />
-
-      <div className="max-w-3xl space-y-9 sm:space-y-14 relative z-10 text-center py-8">
-        <div className="space-y-5">
-          <p className="text-primary font-bold text-lg sm:text-2xl md:text-3xl tracking-wide leading-relaxed font-serif">
-            "And when you have decided, then rely upon Allah. Indeed, Allah loves those who rely
-            [upon Him]."
-          </p>
-          <p className="text-white/50 font-mono text-xs tracking-[0.2em] uppercase">
-            — Surah Ali 'Imran [3:159]
-          </p>
-        </div>
-
-        <div className="w-2/3 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent mx-auto" />
-
-        <div className="space-y-4">
-          <p className="text-white font-mono text-base sm:text-lg md:text-xl tracking-wide">
-            Dedicated to Eman Endris.
-          </p>
-          <p className="text-white/70 font-mono text-xs sm:text-sm md:text-base leading-relaxed max-w-xl mx-auto italic">
-            My best friend, my anchor, and the only person I can truly depend on.
-          </p>
-          <p className="text-primary/80 font-mono text-xs tracking-[0.2em] pt-4 uppercase">
-            — Yitbarek Tegene (Barack Mohammed)
-          </p>
-        </div>
-
-        <button
-          onClick={onEnter}
-          className="border border-primary/50 text-primary hover:bg-primary/10 px-10 py-4 font-mono text-xs tracking-[0.2em] transition-all hover:scale-105"
-        >
-          [ ENTER ARCHITECTURE ]
-        </button>
-      </div>
-    </div>
   );
 }

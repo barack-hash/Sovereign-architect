@@ -1,7 +1,9 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { ClerkProvider } from '@clerk/react';
 import App from './App';
 import { ErrorBoundary } from './ui/ErrorBoundary';
+import { clerkEnabled, clerkPublishableKey } from './lib/authConfig';
 import './index.css';
 
 /**
@@ -30,7 +32,14 @@ window.addEventListener('error', (event) => {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
-      <App />
+      {clerkEnabled ? (
+        <ClerkProvider publishableKey={clerkPublishableKey!} afterSignOutUrl="/">
+          <App />
+        </ClerkProvider>
+      ) : (
+        // No publishable key: local-only mode, no auth, localStorage only.
+        <App />
+      )}
     </ErrorBoundary>
   </StrictMode>,
 );
