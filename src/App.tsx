@@ -24,6 +24,7 @@ import { ExecutionView } from './views/ExecutionView';
 import { SettingsView } from './views/SettingsView';
 import { usePlan, type AuthContext } from './state/usePlan';
 import { ImportOfferModal } from './components/ImportOfferModal';
+import { TemplatePickerModal } from './components/TemplatePickerModal';
 import { useAnalysis } from './state/useAnalysis';
 import * as actions from './state/actions';
 import type { Assumptions, Constraint, Plan, PlanNode, TaskNode, Variant } from './engine';
@@ -106,7 +107,25 @@ function Workspace({
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [templatePicker, setTemplatePicker] = useState<null | 'manual' | 'first-run'>(null);
   const narrow = useNarrowViewport();
+
+  // First landing in an empty workspace: offer the starter templates once.
+  // The import offer takes precedence — a returning user's own plan beats a
+  // template every time.
+  const taskCount = plan.nodes.filter(isTask).length;
+  useEffect(() => {
+    if (taskCount > 0 || controller.importOfferOpen) return;
+    try {
+      if (localStorage.getItem('sovereign.onboarded.v1')) return;
+      localStorage.setItem('sovereign.onboarded.v1', '1');
+    } catch {
+      // Storage unavailable: still show the picker, just without the once-only memory.
+    }
+    setTemplatePicker('first-run');
+    // Deliberately not re-triggered by later edits — this is a first-landing offer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [controller.importOfferOpen]);
 
   const flash = useCallback((message: string) => {
     setToast(message);
@@ -262,10 +281,7 @@ function Workspace({
         activePlanId={controller.activePlanId}
         canManagePlans={controller.canManagePlans}
         onSelectPlan={controller.selectPlan}
-        onCreatePlan={() => {
-          controller.createPlan();
-          flash('Started a new plan.');
-        }}
+        onCreatePlan={() => setTemplatePicker('manual')}
         mobileOpen={menuOpen}
         onMobileClose={() => setMenuOpen(false)}
       />
@@ -354,6 +370,7 @@ function Workspace({
             <SettingsView
               plan={plan}
               controller={controller}
+              onRequestNewPlan={() => setTemplatePicker('manual')}
               onUpdateAssumptions={(patch: Partial<Assumptions>, historyKey?: string) =>
                 update((draft) => void Object.assign(draft.assumptions, patch), { historyKey })
               }
@@ -366,6 +383,18 @@ function Workspace({
 
         <Ticker plan={plan} analysis={analysis} />
       </div>
+
+      {templatePicker && !controller.importOfferOpen && (
+        <TemplatePickerModal
+          firstRun={templatePicker === 'first-run'}
+          onPick={(templatePlan) => {
+            controller.createPlan(templatePlan);
+            setTemplatePicker(null);
+            flash(`Started "${templatePlan.name}". Make it yours.`);
+          }}
+          onClose={() => setTemplatePicker(null)}
+        />
+      )}
 
       {controller.importOfferOpen && (
         <ImportOfferModal

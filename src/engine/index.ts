@@ -18,3 +18,4 @@ export * from './montecarlo';
 export * from './rng';
 export * from './factory';
 export * from './migrate';
+export * from './templates';

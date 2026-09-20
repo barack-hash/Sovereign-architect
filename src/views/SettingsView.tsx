@@ -29,9 +29,17 @@ interface Props {
   controller: PlanController;
   onUpdateAssumptions: (patch: Partial<Assumptions>, historyKey?: string) => void;
   onUpdatePlan: (patch: Partial<Plan>, historyKey?: string) => void;
+  /** Opens the template picker; falls back to a blank plan when absent. */
+  onRequestNewPlan?: () => void;
 }
 
-export function SettingsView({ plan, controller, onUpdateAssumptions, onUpdatePlan }: Props) {
+export function SettingsView({
+  plan,
+  controller,
+  onUpdateAssumptions,
+  onUpdatePlan,
+  onRequestNewPlan,
+}: Props) {
   const { assumptions } = plan;
   const fileRef = useRef<HTMLInputElement>(null);
   const [snapshotName, setSnapshotName] = useState('');
@@ -358,7 +366,7 @@ export function SettingsView({ plan, controller, onUpdateAssumptions, onUpdatePl
 
             <div className="flex flex-wrap gap-2 md:gap-3">
               <Button
-                onClick={() => controller.createPlan()}
+                onClick={() => (onRequestNewPlan ? onRequestNewPlan() : controller.createPlan())}
                 className="inline-flex items-center justify-center min-h-10 md:min-h-0"
               >
                 <span className="flex items-center gap-2">

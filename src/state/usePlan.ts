@@ -813,11 +813,16 @@ export function usePlan(auth: AuthContext | null = null) {
   );
 
   const createPlan = useCallback(
-    (name?: string) => {
+    (template?: Plan) => {
       const store = storeRef.current;
-      if (!store) return; // Local mode: one plan, use resetPlan instead.
-      const fresh = createDefaultPlan();
-      if (name) fresh.name = name;
+      const fresh = template ? clone(template) : createDefaultPlan();
+      if (!store) {
+        // Local mode holds exactly one plan: starting fresh replaces it,
+        // undoably, exactly like resetPlan.
+        replacePlan(fresh);
+        return;
+      }
+      if (store.plans[fresh.id]) fresh.id = `${fresh.id}_${Date.now().toString(36)}`;
       adoptingRef.current = 0; // A brand-new plan must persist and upload.
       setMigrationNotes([]);
       store.notes = undefined;
@@ -826,7 +831,7 @@ export function usePlan(auth: AuthContext | null = null) {
       resetHistory();
       // The persist effect adds it to the store and queues the upload.
     },
-    [resetHistory],
+    [resetHistory, replacePlan],
   );
 
   const deletePlan = useCallback(
